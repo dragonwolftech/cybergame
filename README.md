@@ -73,11 +73,19 @@ Tier 0 is for someone who has never used a terminal. Each early chapter is one i
 19. **Echo** — cross-site scripting, stopped at the parsed tag
 20. **The Back Stair** — directory traversal and misconfiguration
 
-### Tier 3 · Advanced
+### Tier 3 · Advanced — red cell
 
 21. **Borrowed Root** — sudo policy and SUID
 22. **The Other Door** — credential reuse and lateral movement
 23. **What We Leave Behind** — persistence, logs, and the findings report
+
+The blue cell is a second track on the same basics. Dispatch has Basics, Red cell, and Blue cell.
+
+### Blue cell
+
+Tier 1: The Other Chair, The Map, The Tape, Many Names, The Header.
+Tier 2: Close the Extra Door, The Gate, What the Log Saw, Two Steps.
+Tier 3: The Clock, The Quiet Account, The Rule and the Note.
 
 ## Deploy
 

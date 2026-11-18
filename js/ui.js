@@ -46,7 +46,8 @@
     quill: { handle: "QUILL", tag: "fixer", glyph: "Q" },
     rook: { handle: "ROOK", tag: "runner", glyph: "R" },
     lena: { handle: "VOSS", tag: "corp", glyph: "V" },
-    pix: { handle: "PIX", tag: "ghost", glyph: "X" }
+    pix: { handle: "PIX", tag: "ghost", glyph: "X" },
+    wren: { handle: "WREN", tag: "soc", glyph: "W" }
   };
 
   const MARKS = {
@@ -168,7 +169,7 @@
   }
 
   function isToolView(name) {
-    return ["terminal", "mail", "letter", "browser", "files", "doc"].indexOf(name) !== -1;
+    return ["terminal", "mail", "letter", "browser", "files", "doc", "logs", "firewall", "rule"].indexOf(name) !== -1;
   }
 
   function useSplit() {
@@ -274,7 +275,8 @@
 
   function insertCommand(cmd) {
     pendingCmd = cmd;
-    if (view().name !== "terminal") go("terminal");
+    const app = (Game.objective() && Game.objective().commandApp) || "terminal";
+    if (view().name !== app) go(app);
     else refresh();
   }
 
@@ -399,12 +401,12 @@
     }
     restore(shot, jumped);
     if (pendingCmd) {
-      const input = document.getElementById("term-in");
+      const input = document.getElementById("term-in") || document.getElementById("log-filter");
       if (input) {
         input.value = pendingCmd;
         input.focus();
+        pendingCmd = "";
       }
-      pendingCmd = "";
     } else if (jumped && view().name === "terminal") {
       const input = document.getElementById("term-in");
       if (input) input.focus();
@@ -481,6 +483,9 @@
       browser: "Browser",
       files: "Files",
       doc: "Files",
+      logs: "Logs",
+      firewall: "Firewall",
+      rule: "Rule",
       codex: "Codex",
       entry: "Codex",
       settings: "Settings",
@@ -553,7 +558,7 @@
 
   function showTabs() {
     const name = view().name;
-    return ["thread", "messages", "terminal", "mail", "letter", "browser", "files", "doc"].indexOf(name) !== -1;
+    return ["thread", "messages", "terminal", "mail", "letter", "browser", "files", "doc", "logs", "firewall", "rule"].indexOf(name) !== -1;
   }
 
   function tabBar() {
@@ -565,6 +570,11 @@
       ["browser", "Browser"],
       ["files", "Files"]
     ];
+    const chapterLab = Game.currentChapter && Game.currentChapter();
+    const tools = chapterLab && chapterLab.lab;
+    if (tools && tools.logs) tabs.push(["logs", "Logs"]);
+    if (tools && tools.firewall) tabs.push(["firewall", "Firewall"]);
+    if (tools && tools.watch) tabs.push(["rule", "Rule"]);
     function active(id) {
       if (id === "chat") return name === "thread" || name === "messages";
       if (id === "mail") return name === "mail" || name === "letter";
@@ -615,7 +625,7 @@
 
   function showObjective() {
     const name = view().name;
-    return ["thread", "terminal", "mail", "letter", "browser", "files", "doc"].indexOf(name) !== -1 && Game.objective();
+    return ["thread", "terminal", "mail", "letter", "browser", "files", "doc", "logs", "firewall", "rule"].indexOf(name) !== -1 && Game.objective();
   }
 
   function objectiveBar() {
@@ -662,6 +672,9 @@
       browser: browserView,
       files: filesView,
       doc: docView,
+      logs: logsView,
+      firewall: firewallView,
+      rule: ruleView,
       codex: codexView,
       entry: entryView,
       settings: settingsView,
@@ -913,14 +926,38 @@
   function jobsView() {
     const wrap = h("div", { class: "view" });
     const sc = h("div", { class: "scroll" });
-    sc.append(h("p", { class: "sub" }, "Start at Tier 0 if the words are new. One idea at a time. Hints are free in Tier 0 and Tier 1."));
+    sc.append(h("p", { class: "sub" }, "Start at Tier 0 if the words are new. Then pick a chair: red cell tests, blue cell watches. Hints are free in Tier 0 and Tier 1."));
     sc.append(h("button", {
       class: "btn",
       onClick: function () { go("settings"); }
     }, "Export or import a save code"));
+    const basics = NightAudit.chapters.filter(function (ch) { return ch.track === "basics"; });
+    const lastBasic = basics[basics.length - 1];
+    const basicsReady = !!(lastBasic && Game.state.chapters[lastBasic.id] && Game.state.chapters[lastBasic.id].status === "done");
+    let track = basicsReady ? ((Game.state.settings && Game.state.settings.track) || "red") : "basics";
+    if (track !== "basics" && track !== "red" && track !== "blue") track = "red";
+    const tracks = h("div", { class: "tracks", role: "tablist", "aria-label": "Tracks" });
+    [
+      ["basics", "Basics"],
+      ["red", "Red cell"],
+      ["blue", "Blue cell"]
+    ].forEach(function (item) {
+      tracks.append(h("button", {
+        class: "track" + (track === item[0] ? " on" : ""),
+        onClick: function () {
+          if (item[0] !== "basics" && !basicsReady) return;
+          Game.setTrack(item[0]);
+        }
+      }, item[1]));
+    });
+    sc.append(tracks);
+    if (!basicsReady && track !== "basics") {
+      sc.append(h("p", { class: "sub" }, "Finish the basics first. Both chairs use them."));
+    }
     let lastTier = -1;
     const tierNames = ["Tier 0 · Basics", "Tier 1 · Beginner", "Tier 2 · Intermediate", "Tier 3 · Advanced"];
     NightAudit.chapters.forEach(function (ch) {
+      if ((ch.track || "red") !== track) return;
       if ((ch.tier || 0) !== lastTier) {
         lastTier = ch.tier || 0;
         sc.append(h("h2", { class: "tierhead" }, tierNames[lastTier] || "Tier"));
@@ -1022,6 +1059,151 @@
     return wrap;
   }
 
+  function logsView() {
+    const chapterLab = lab();
+    const run = Game.activeRun();
+    const spec = chapterLab && chapterLab.logs;
+    if (!spec || !run) return needJob("Logs", "No tape is loaded. Take a blue chapter first.");
+    if (!run.views.logSource) run.views.logSource = spec.sources[0].id;
+    const wrap = h("div", { class: "view" });
+    wrap.append(topbar("Logs"));
+    const sources = h("div", { class: "bookmarks" }, spec.sources.map(function (source) {
+      return h("button", {
+        class: run.views.logSource === source.id ? "on" : "",
+        onClick: function () {
+          run.views.logSource = source.id;
+          refresh();
+        }
+      }, source.label);
+    }));
+    const filter = h("input", {
+      id: "log-filter",
+      "data-keep": "1",
+      "aria-label": "Filter log",
+      placeholder: "filter, like fail",
+      autocapitalize: "off",
+      autocomplete: "off",
+      spellcheck: "false",
+      enterkeyhint: "search"
+    });
+    filter.addEventListener("input", function () { refresh(); });
+    const form = h("form", {
+      class: "termform",
+      onSubmit: function (event) { event.preventDefault(); }
+    }, filter);
+    const source = spec.sources.find(function (item) { return item.id === run.views.logSource; }) || spec.sources[0];
+    const liveFilter = document.getElementById("log-filter");
+    const preset = pendingCmd || (liveFilter && liveFilter.value) || "";
+    filter.value = preset;
+    const needle = preset.toLowerCase();
+    const sc = h("div", { class: "scroll" });
+    source.lines.forEach(function (line) {
+      if (needle && line.text.toLowerCase().indexOf(needle) === -1) return;
+      const on = run.views.flagged && run.views.flagged[line.id];
+      sc.append(h("button", {
+        class: "logline" + (on ? " on" : ""),
+        onClick: function () { Game.flagLog(line.id); }
+      }, (on ? "Flagged · " : "Flag · ") + line.text));
+    });
+    if (run.views.logNote) sc.append(h("p", { class: run.goals[spec.goal] ? "oknote" : "warn" }, run.views.logNote));
+    wrap.append(sources, form, sc);
+    return wrap;
+  }
+
+  function firewallView() {
+    const chapterLab = lab();
+    const run = Game.activeRun();
+    const spec = chapterLab && chapterLab.firewall;
+    if (!spec || !run) return needJob("Firewall", "No gate is loaded. Take a blue chapter first.");
+    const wrap = h("div", { class: "view" });
+    wrap.append(topbar("Firewall"));
+    const sc = h("div", { class: "scroll" });
+    sc.append(h("p", { class: "sub" }, "Each line is who, which door, and allow or deny. Locked lines stay."));
+    spec.rules.forEach(function (rule) {
+      const action = (run.views.rules && run.views.rules[rule.id]) || rule.action;
+      const row = h("div", { class: "rule" });
+      row.append(h("strong", {}, rule.label), h("span", { class: "fine" }, action));
+      if (!rule.lock) {
+        row.append(h("div", { class: "row" },
+          h("button", {
+            class: "btn" + (action === "allow" ? " primary" : ""),
+            onClick: function () { Game.setFirewall(rule.id, "allow"); }
+          }, "Allow"),
+          h("button", {
+            class: "btn" + (action === "deny" ? " primary" : ""),
+            onClick: function () { Game.setFirewall(rule.id, "deny"); }
+          }, "Deny")
+        ));
+      }
+      sc.append(row);
+    });
+    if (run.views.wallNote) sc.append(h("p", { class: run.goals[spec.goal] ? "oknote" : "warn" }, run.views.wallNote));
+    wrap.append(sc);
+    return wrap;
+  }
+
+  function ruleView() {
+    const chapterLab = lab();
+    const run = Game.activeRun();
+    const spec = chapterLab && chapterLab.watch;
+    if (!spec || !run) return needJob("Rule", "No detection form is loaded.");
+    const draft = (run.views.watch && run.views.watch.draft) || {};
+    const errors = (run.views.watch && run.views.watch.errors) || [];
+    const wrap = h("div", { class: "view" });
+    wrap.append(topbar("Rule"));
+    const watch = h("select", { id: "watch-what", "data-keep": "1" },
+      h("option", { value: "" }, "What do you watch?"),
+      h("option", { value: "logins" }, "Logins"),
+      h("option", { value: "web" }, "Web requests"),
+      h("option", { value: "tasks" }, "Scheduled tasks")
+    );
+    const sign = h("select", { id: "watch-sign", "data-keep": "1" },
+      h("option", { value: "" }, "What is the bad sign?"),
+      h("option", { value: "one-typo" }, "One mistyped password"),
+      h("option", { value: "download-run" }, "A task that downloads a program and runs it"),
+      h("option", { value: "brochure" }, "Someone opened the brochure")
+    );
+    const severity = h("select", { id: "watch-sev", "data-keep": "1" },
+      h("option", { value: "" }, "Severity"),
+      h("option", { value: "low" }, "Low"),
+      h("option", { value: "high" }, "High"),
+      h("option", { value: "critical" }, "Critical")
+    );
+    if (draft.watch) watch.value = draft.watch;
+    if (draft.sign) sign.value = draft.sign;
+    if (draft.severity) severity.value = draft.severity;
+    const note = h("textarea", {
+      id: "watch-note",
+      "data-keep": "1",
+      rows: "5",
+      placeholder: "What happened, and what will change?"
+    });
+    if (draft.note) note.value = draft.note;
+    const sc = h("div", { class: "scroll" });
+    sc.append(
+      h("p", { class: "sub" }, "A small rule: which tape, which sign, how loud. Then two sentences."),
+      h("label", { class: "field" }, "Watch", watch),
+      h("label", { class: "field" }, "Sign", sign),
+      h("label", { class: "field" }, "Severity", severity),
+      h("label", { class: "field" }, "Note", note)
+    );
+    errors.forEach(function (err) { sc.append(h("p", { class: "warn" }, err)); });
+    if (run.views.watch && run.views.watch.ok) sc.append(h("p", { class: "oknote" }, run.views.watch.note));
+    sc.append(h("button", {
+      class: "btn primary",
+      onClick: function () {
+        Game.submitWatch({
+          watch: document.getElementById("watch-what").value,
+          sign: document.getElementById("watch-sign").value,
+          severity: document.getElementById("watch-sev").value,
+          note: document.getElementById("watch-note").value
+        });
+      }
+    }, "File the rule"));
+    wrap.append(sc);
+    return wrap;
+  }
+
   function mailView() {
     const chapterLab = lab();
     const run = Game.activeRun();
@@ -1055,6 +1237,7 @@
     sc.append(h("h2", {}, mail.subject));
     sc.append(h("p", { class: "addr" }, mail.from + " <" + mail.addr + ">"));
     sc.append(h("p", { class: "fine" }, "Reply-To: " + (mail.replyTo || mail.addr)));
+    if (mail.headers && mail.headers.length) sc.append(h("pre", { class: "code" }, mail.headers.join("\n")));
     mail.paragraphs.forEach(function (p) { sc.append(h("p", {}, p)); });
     if (mail.link) {
       const shown = inspected[mail.id];
@@ -1612,7 +1795,7 @@
     }
     const d = ch.debrief;
     const score = Game.state.best[ch.id];
-    const next = NightAudit.chapters[ch.n];
+    const next = Game.nextInTrack(ch);
     const sc = h("div", { class: "scroll debrief" });
     sc.append(
       h("p", { class: "kicker" }, "Debrief · " + String(ch.n).padStart(2, "0")),

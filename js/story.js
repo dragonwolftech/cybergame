@@ -1599,6 +1599,7 @@
       ch.check = pack.check;
     }
     if (!ch.check || !ch.check.length) return;
+    const asker = ch.voice || "quill";
     Object.keys(ch.scenes).forEach(function (name) {
       if (name.indexOf("quiz") === 0) return;
       ch.scenes[name].forEach(function (step) {
@@ -1609,7 +1610,7 @@
       });
     });
     ch.scenes["quiz-intro"] = [
-      { do: "say", who: "quill", text: "Two questions. Plain answers." },
+      { do: "say", who: asker, text: "Two questions. Plain answers." },
       { do: "goto", scene: "quiz-0" }
     ];
     ch.check.forEach(function (q, i) {
@@ -1622,7 +1623,7 @@
             const row = { id: "chk" + i + "o" + j, text: opt.t };
             if (!opt.ok) {
               row.wrong = true;
-              row.reply = { who: "quill", text: opt.why };
+              row.reply = { who: asker, text: opt.why };
             } else {
               row.goto = next;
             }
@@ -1632,14 +1633,22 @@
       ];
     });
     ch.scenes["quiz-done"] = [
-      { do: "say", who: "quill", text: ch.learned },
+      { do: "say", who: asker, text: ch.learned },
       { do: "finish" }
     ];
   }
 
   NA.primer = primer;
-  const all = (NA.basics || []).concat(chapters);
+  const all = (NA.basics || []).concat(chapters).concat(NA.blue || []);
+  all.forEach(function (ch) {
+    if (!ch.track) ch.track = ch.tier === 0 ? "basics" : "red";
+  });
   all.forEach(wire);
-  all.forEach(function (ch, i) { ch.n = i + 1; });
+  const count = { basics: 0, red: 0, blue: 0 };
+  all.forEach(function (ch) {
+    const track = ch.track || "red";
+    count[track] = (count[track] || 0) + 1;
+    ch.n = count[track];
+  });
   NA.chapters = all;
 })(typeof globalThis !== "undefined" ? globalThis : this);

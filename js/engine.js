@@ -3,7 +3,8 @@
   "use strict";
 
   const NA = root.NightAudit;
-  const KEY = "night-audit-v2";
+  const KEY = "night-audit-v3";
+  const MID_KEY = "night-audit-v2";
   const OLD_KEY = "night-audit-v1";
   const memoryStore = {};
   const db = (typeof localStorage !== "undefined")
@@ -16,18 +17,15 @@
 
   function rankRows() {
     const chapters = NA.chapters || [];
-    const counts = [0, 0, 0, 0];
-    chapters.forEach(function (ch) { counts[ch.tier || 0] += 1; });
-    let upto = 0;
-    const ends = counts.map(function (n) { upto += n * 100; return upto; });
-    const top = ends[3] || upto || 100;
+    const primary = chapters.filter(function (ch) { return ch.track !== "blue"; }).length || chapters.length || 1;
+    const top = primary * 100;
     return [
       { min: 0, name: "Script Kiddie" },
-      { min: Math.max(80, (ends[0] || 0) - 40), name: "Stringer" },
-      { min: Math.max(160, (ends[1] || 0) - 40), name: "Operator" },
-      { min: Math.max(240, (ends[2] || 0) - 40), name: "Night Wire" },
-      { min: Math.max(320, top - 220), name: "Red Cell" },
-      { min: Math.max(400, top - 30), name: "Ghost" }
+      { min: Math.round(top * 0.22), name: "Stringer" },
+      { min: Math.round(top * 0.45), name: "Operator" },
+      { min: Math.round(top * 0.68), name: "Night Wire" },
+      { min: Math.round(top * 0.85), name: "Red Cell" },
+      { min: Math.max(400, top - 80), name: "Ghost" }
     ];
   }
 
@@ -39,7 +37,7 @@
 
   function freshState() {
     return {
-      v: 2,
+      v: 3,
       notice: null,
       player: null,
       settings: { fast: false, sound: false },
@@ -135,7 +133,7 @@
   }
 
   function normalize(parsed) {
-    parsed.v = 2;
+    parsed.v = 3;
     parsed.notice = null;
     parsed.settings = parsed.settings || { fast: false, sound: false };
     if (typeof parsed.settings.sound !== "boolean") parsed.settings.sound = false;
@@ -172,20 +170,20 @@
 
   function describeSave(data) {
     const score = scoreOf(data);
-    let reached = "No chapter finished yet";
-    let bestN = 0;
-    let bestTitle = "";
-    (NA.chapters || []).forEach(function (ch) {
-      const run = data.chapters && data.chapters[ch.id];
-      if (run && run.status === "done" && ch.n >= bestN) {
-        bestN = ch.n;
-        bestTitle = ch.title;
-      }
+    const names = { basics: "Basics", red: "Red", blue: "Blue" };
+    const parts = [];
+    ["basics", "red", "blue"].forEach(function (track) {
+      let best = null;
+      trackChapters(track).forEach(function (ch) {
+        const run = data.chapters && data.chapters[ch.id];
+        if (run && run.status === "done" && (!best || ch.n >= best.n)) best = ch;
+      });
+      if (best) parts.push(names[track] + " " + best.n + " · " + best.title);
     });
-    if (bestN) reached = "Through " + bestN + " · " + bestTitle;
+    let reached = parts.length ? parts.join("; ") : "No chapter finished yet";
     if (data.active && data.chapters && data.chapters[data.active] && data.chapters[data.active].status !== "done") {
       const ch = chapterById(data.active);
-      if (ch) reached = "In progress · " + ch.n + " " + ch.title;
+      if (ch) reached = "In progress · " + (names[trackOf(ch)] || "") + " " + ch.n + " " + ch.title;
     }
     const who = data.player ? (data.player.name + " / " + data.player.call) : "No name yet";
     return {
@@ -196,32 +194,45 @@
     };
   }
 
+  function migrate(parsed) {
+    if (!parsed || !parsed.trust || (parsed.v !== 2 && parsed.v !== 3)) return null;
+    return normalize(parsed);
+  }
+
   function load() {
     try {
       let raw = db.getItem(KEY);
-      if (!raw) {
-        const old = db.getItem(OLD_KEY);
-        db.removeItem(OLD_KEY);
-        const fresh = freshState();
-        if (old) {
-          fresh.notice = "The lesson path changed, so this handset started over. Old chapter progress was cleared.";
-          try {
-            const parsedOld = JSON.parse(old);
-            if (parsedOld && parsedOld.settings) {
-              fresh.settings.fast = !!parsedOld.settings.fast;
-              fresh.settings.sound = !!parsedOld.settings.sound;
-            }
-          } catch (err) { /* old save was not usable */ }
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const migrated = migrate(parsed);
+        if (!migrated) {
+          db.removeItem(KEY);
+          return freshState();
         }
-        return fresh;
+        return migrated;
       }
-      const parsed = JSON.parse(raw);
-      if (!parsed || parsed.v !== 2 || !parsed.trust) {
-        db.removeItem(KEY);
-        db.removeItem(OLD_KEY);
-        return freshState();
+      const mid = db.getItem(MID_KEY);
+      if (mid) {
+        const migrated = migrate(JSON.parse(mid));
+        if (migrated) {
+          db.setItem(KEY, JSON.stringify(persistable(migrated)));
+          return migrated;
+        }
       }
-      return normalize(parsed);
+      const old = db.getItem(OLD_KEY);
+      db.removeItem(OLD_KEY);
+      const fresh = freshState();
+      if (old) {
+        fresh.notice = "The lesson path changed, so this handset started over. Old chapter progress was cleared.";
+        try {
+          const parsedOld = JSON.parse(old);
+          if (parsedOld && parsedOld.settings) {
+            fresh.settings.fast = !!parsedOld.settings.fast;
+            fresh.settings.sound = !!parsedOld.settings.sound;
+          }
+        } catch (err) { /* old save was not usable */ }
+      }
+      return fresh;
     } catch (err) {
       return freshState();
     }
@@ -436,13 +447,43 @@
     };
   }
 
+  function trackOf(ch) {
+    if (!ch) return "red";
+    if (ch.track) return ch.track;
+    if (ch.tier === 0) return "basics";
+    return "red";
+  }
+
+  function trackChapters(track) {
+    return (NA.chapters || []).filter(function (c) { return trackOf(c) === track; });
+  }
+
+  function basicsDone() {
+    const basics = trackChapters("basics");
+    if (!basics.length) return true;
+    const last = basics[basics.length - 1];
+    const run = state.chapters[last.id];
+    return !!(run && run.status === "done");
+  }
+
   function isOpen(ch) {
     if (!state.player) return false;
-    const i = NA.chapters.findIndex(function (c) { return c.id === ch.id; });
-    if (i <= 0) return true;
-    const prev = NA.chapters[i - 1];
+    const track = trackOf(ch);
+    const same = trackChapters(track);
+    const i = same.findIndex(function (c) { return c.id === ch.id; });
+    if (i < 0) return false;
+    if (track !== "basics" && !basicsDone()) return false;
+    if (i === 0) return true;
+    const prev = same[i - 1];
     const run = state.chapters[prev.id];
     return !!(run && run.status === "done");
+  }
+
+  function nextInTrack(ch) {
+    if (!ch) return null;
+    const same = trackChapters(trackOf(ch));
+    const i = same.findIndex(function (c) { return c.id === ch.id; });
+    return same[i + 1] || null;
   }
 
   function addTrust(id, deltas) {
@@ -521,6 +562,74 @@
     viewingRun: viewingRun,
     viewingId: viewingId,
     isOpen: isOpen,
+    nextInTrack: nextInTrack,
+    setTrack: function (track) {
+      if (track !== "basics" && track !== "red" && track !== "blue") return;
+      state.settings.track = track;
+      save();
+      emit();
+    },
+    flagLog: function (id) {
+      const run = activeRun();
+      const ch = currentChapter();
+      const spec = ch && ch.lab && ch.lab.logs;
+      if (!run || !spec) return { error: "no-logs" };
+      run.views.flagged = run.views.flagged || {};
+      run.views.flagged[id] = !run.views.flagged[id];
+      const need = spec.flag || [];
+      const chosen = Object.keys(run.views.flagged).filter(function (key) { return run.views.flagged[key]; });
+      const exact = need.length === chosen.length && need.every(function (key) { return run.views.flagged[key]; });
+      if (exact) run.goals[spec.goal] = true;
+      else delete run.goals[spec.goal];
+      run.views.logNote = exact ? "Those are the lines. Leave the ordinary ones alone." : (chosen.length ? "Not quite. Flag only the lines the objective names." : "");
+      save();
+      tick();
+      return { ok: exact };
+    },
+    setFirewall: function (id, action) {
+      const run = activeRun();
+      const ch = currentChapter();
+      const spec = ch && ch.lab && ch.lab.firewall;
+      if (!run || !spec) return { error: "no-firewall" };
+      const rule = (spec.rules || []).find(function (item) { return item.id === id; });
+      if (!rule || rule.lock) return { error: "locked" };
+      if (action !== "allow" && action !== "deny") return { error: "bad-action" };
+      run.views.rules = run.views.rules || {};
+      run.views.rules[id] = action;
+      const want = spec.want || {};
+      const ok = Object.keys(want).every(function (key) {
+        const current = run.views.rules[key];
+        const base = (spec.rules.find(function (item) { return item.id === key; }) || {}).action;
+        return (current || base) === want[key];
+      });
+      if (ok) run.goals[spec.goal] = true;
+      else delete run.goals[spec.goal];
+      run.views.wallNote = ok ? "The gate matches the objective." : "The public site has to stay open. The extra door should not.";
+      save();
+      tick();
+      return { ok: ok };
+    },
+    submitWatch: function (data) {
+      const run = activeRun();
+      const ch = currentChapter();
+      if (!run || !ch || !ch.lab || !ch.lab.watch) return { error: "no-watch" };
+      const errors = [];
+      if (!data || data.watch !== "tasks") errors.push("Watch scheduled tasks. This finding is not a login.");
+      if (!data || data.sign !== "download-run") errors.push("The bad sign is a task that downloads a program and runs it.");
+      if (!data || data.severity !== "high") errors.push("Call it High. You have not shown a wide-open takeover.");
+      const note = String((data && data.note) || "").trim();
+      if (note.length < 40) errors.push("Write two sentences: what happened, and what you will change.");
+      else {
+        if (!/task|schedule|cron/i.test(note)) errors.push("Name the scheduled task.");
+        if (!/remov|log|ship/i.test(note)) errors.push("Name the change: remove the task, or ship a copy of the logs off the computer.");
+      }
+      const res = { ok: errors.length === 0, errors: errors, note: errors.length ? "" : "Filed. The rule watches the schedule, and the note tells the board what to change." };
+      run.views.watch = { draft: data, ok: res.ok, errors: errors, note: res.note };
+      if (res.ok) run.goals[ch.lab.watch.goal] = true;
+      save();
+      tick();
+      return res;
+    },
     currentStep: currentStep,
     blocked: function () {
       const step = currentStep();
@@ -852,9 +961,13 @@
         if (labels.length) text = labels[0];
       }
       let command = "";
+      let commandApp = "terminal";
       if (ch.tier <= 1 && run && ch.scaffold) {
         ch.scaffold.forEach(function (item) {
-          if (!command && !run.goals[item.goal]) command = item.command;
+          if (!command && !run.goals[item.goal]) {
+            command = item.command;
+            commandApp = item.app || "terminal";
+          }
         });
       }
       const tierNames = ["Basics", "Beginner", "Intermediate", "Advanced"];
@@ -865,6 +978,7 @@
         tierName: tierNames[ch.tier || 0] || "Basics",
         text: text,
         command: command,
+        commandApp: commandApp,
         progress: progress,
         hints: run.hints,
         maxHints: (ch.hints || []).length,
@@ -892,15 +1006,16 @@
     rankRows: rankRows,
     exportCode: function () {
       const json = JSON.stringify(persistable(state));
-      return "NA2." + utf8ToB64url(json) + "." + checksum(json);
+      return "NA3." + utf8ToB64url(json) + "." + checksum(json);
     },
     readCode: function (raw) {
       const code = extractCode(raw);
       const parts = code.match(/^(NA\d+)\.([A-Za-z0-9_-]+)\.([a-f0-9]+)$/i);
       if (!parts) {
-        return { ok: false, error: "That doesn't look like a Night Audit save code. Copy the whole code, including the NA2 at the start." };
+        return { ok: false, error: "That doesn't look like a Night Audit save code. Copy the whole code, including the NA3 at the start." };
       }
-      if (parts[1].toUpperCase() !== "NA2") {
+      const prefix = parts[1].toUpperCase();
+      if (prefix !== "NA2" && prefix !== "NA3") {
         return { ok: false, error: "That save is from a different Night Audit version, so this page can't open it." };
       }
       let json = "";
@@ -918,7 +1033,8 @@
       } catch (err) {
         return { ok: false, error: "That code is damaged. Copy it again." };
       }
-      if (!data || data.v !== 2 || !data.trust || typeof data.chapters !== "object") {
+      const versionOk = (prefix === "NA2" && data && data.v === 2) || (prefix === "NA3" && data && data.v === 3);
+      if (!versionOk || !data.trust || typeof data.chapters !== "object") {
         return { ok: false, error: "That save is from a different Night Audit version, so this page can't open it." };
       }
       data = normalize(data);
