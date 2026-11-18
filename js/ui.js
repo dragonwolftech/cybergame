@@ -12,6 +12,128 @@
   let inspected = {};
   let histCursor = -1;
   let histDraft = "";
+  let bootPhase = 1;
+  let bootTimer = 0;
+
+  const CAST = {
+    quill: { handle: "QUILL", tag: "fixer", glyph: "Q" },
+    rook: { handle: "ROOK", tag: "runner", glyph: "R" },
+    lena: { handle: "VOSS", tag: "corp", glyph: "V" },
+    pix: { handle: "PIX", tag: "ghost", glyph: "X" }
+  };
+
+  const MARKS = {
+    c1: "  /\\   CIVIC RANGE\n /__\\  ENGAGEMENT 04\n ROE   AFTER HOURS",
+    c2: "  [◇]  HELIX DYNE\n  PUBLIC LIGHT\n  NO JACK-IN",
+    c3: "  ▣▣▣  OPEN PORTS\n  GRID SCAN\n  LAB HOST ONLY",
+    c4: "  ██  FACTORY\n  ██  SETTINGS\n  HELIXGATE",
+    c5: "  ✉  THE POLITE LIE\n  MAIL ICE\n  READ THE HREF",
+    c6: "  #  THREE SECRETS\n  COSTUME / HASH / LOCK",
+    c7: "  >_  THE QUERY\n  MIRROR ONLY",
+    c8: "  </>  ECHO\n  PARSE, DON'T RUN",
+    c9: "  ../  BACK STAIR\n  FILES.HELIX",
+    c10: "  #  BORROWED ROOT\n  SUDO / SUID",
+    c11: "  >>  OTHER DOOR\n  SAME KEY, NEXT HOST",
+    c12: "  ▣  WHAT WE LEAVE\n  LOGS / REPORT"
+  };
+
+  const HEADLINES = [
+    "CINDERWHARF WIRE // neon rain locked over the docks until dawn",
+    "HELIX DYNE // Beacon chrome waits on the Night Audit window",
+    "LOWLIGHT // stringer jacked into a sealed range, city stays outside",
+    "RANGE AUTHORITY // no carrier traffic leaves the handset",
+    "METRO ICE // production turnstiles stay shut to the cell",
+    "BLINKR // handles talk louder than the corp towers",
+    "FIXER BOARD // chrome is cheap, a written scope is not",
+    "SECTOR 7 // city lights drift, the grid holds",
+    "SPRAWL // magenta wash on the Helix glass, acid on the river",
+    "NIGHT MARKET // runners trade rumors, Night Audit trades reports"
+  ];
+
+  const BOOT_LINES = [
+    "HANDSET 04  ·  CINDERWHARF GRID",
+    "JACK IN  ·  CIVIC RANGE AUTHORITY",
+    "ICE CHECK  ……  SEALED",
+    "CARRIER  ……  NONE",
+    "PACKETS LEAVING THE GLASS  ……  0",
+    "NEON RAIN  ·  SECTOR 7  ·  LOCAL ONLY",
+    "SIGNAL LOCK"
+  ];
+
+  const AudioBus = (function () {
+    let ctx = null;
+    let hum = null;
+    let lfoTimer = 0;
+    function context() {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      if (!Ctor) return null;
+      if (!ctx) ctx = new Ctor();
+      if (ctx.state === "suspended") ctx.resume();
+      return ctx;
+    }
+    function startHum() {
+      const c = context();
+      if (!c || hum) return;
+      const o1 = c.createOscillator();
+      const o2 = c.createOscillator();
+      const filter = c.createBiquadFilter();
+      const gain = c.createGain();
+      o1.type = "sawtooth";
+      o2.type = "sine";
+      o1.frequency.value = 55;
+      o2.frequency.value = 82.4;
+      filter.type = "lowpass";
+      filter.frequency.value = 220;
+      gain.gain.value = 0.012;
+      o1.connect(filter);
+      o2.connect(filter);
+      filter.connect(gain);
+      gain.connect(c.destination);
+      o1.start();
+      o2.start();
+      hum = { o1: o1, o2: o2, gain: gain, filter: filter };
+      lfoTimer = setInterval(function () {
+        if (!hum || !ctx) return;
+        const wobble = 180 + Math.sin(ctx.currentTime * 0.35) * 40;
+        hum.filter.frequency.setTargetAtTime(wobble, ctx.currentTime, 0.2);
+      }, 400);
+    }
+    function stopHum() {
+      if (lfoTimer) {
+        clearInterval(lfoTimer);
+        lfoTimer = 0;
+      }
+      if (!hum) return;
+      try { hum.o1.stop(); hum.o2.stop(); } catch (err) { /* already stopped */ }
+      hum = null;
+    }
+    return {
+      supported: function () { return !!(window.AudioContext || window.webkitAudioContext); },
+      set: function (on) { if (on) startHum(); else stopHum(); },
+      blip: function (freq) {
+        const c = context();
+        if (!c) return;
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = "square";
+        o.frequency.value = freq || 640;
+        g.gain.setValueAtTime(0.035, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.07);
+        o.connect(g);
+        g.connect(c.destination);
+        o.start();
+        o.stop(c.currentTime + 0.08);
+      }
+    };
+  })();
+
+  function reducedMotion() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function soundOn() {
+    return !!(Game.state && Game.state.settings && Game.state.settings.sound);
+  }
 
   const SVG = {
     back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 L8 12 L15 19"/></svg>',
@@ -203,7 +325,7 @@
         class: "menu",
         onClick: function () { sidebarOpen = !sidebarOpen; refresh(); }
       }, sidebarOpen ? "Close" : "Channels"),
-      h("h2", {}, paneTitle()),
+      h("h2", { class: "glitch" }, paneTitle()),
       h("span", { class: "fine", id: "clock" }, clock())
     );
   }
@@ -239,7 +361,7 @@
       go(name, extra);
     }
     const side = h("aside", { class: "sidebar" });
-    side.append(h("div", { class: "brand" }, h("h1", {}, "Night Audit"), h("span", {}, "LAB")));
+    side.append(h("div", { class: "brand" }, h("h1", { class: "glitch" }, "Night Audit"), h("span", {}, "GRID")));
     if (player.name) {
       side.append(h("div", { class: "rankcard" },
         h("div", { class: "rank" }, rank.name),
@@ -268,8 +390,26 @@
         onClick: function () { goNav(item[0]); }
       }, icon(item[2]), item[1]));
     });
-    side.append(h("div", { class: "sidefoot" }, "Sealed lab. No packets leave this site."));
+    side.append(ticker());
+    side.append(h("div", { class: "sidefoot" }, "Sealed handset. The neon rain stays outside the glass."));
     return side;
+  }
+
+  function ticker() {
+    const lines = reducedMotion() ? HEADLINES.slice(0, 3) : HEADLINES.concat(HEADLINES);
+    return h("div", { class: "ticker" },
+      h("div", { class: "ticker-label" }, "Cinderwharf wire"),
+      h("div", { class: "ticker-window" },
+        h("div", { class: "ticker-track" }, lines.map(function (line) {
+          return h("span", {}, line);
+        }))
+      )
+    );
+  }
+
+  function chapterMark(id) {
+    if (!id || !MARKS[id]) return null;
+    return h("pre", { class: "mark", "aria-hidden": "true" }, MARKS[id]);
   }
 
   function showTabs() {
@@ -384,16 +524,39 @@
     return fn();
   }
 
+  function armBoot() {
+    if (bootTimer || bootPhase >= BOOT_LINES.length) return;
+    if (reducedMotion()) {
+      bootPhase = BOOT_LINES.length;
+      return;
+    }
+    bootTimer = setTimeout(function () {
+      bootTimer = 0;
+      bootPhase = Math.min(BOOT_LINES.length, bootPhase + 1);
+      if (view().name === "boot") refresh();
+    }, 340);
+  }
+
   function bootView() {
+    armBoot();
+    const done = bootPhase >= BOOT_LINES.length;
+    const lines = BOOT_LINES.slice(0, reducedMotion() ? BOOT_LINES.length : bootPhase);
+    const log = h("div", { class: "bootlog" });
+    lines.forEach(function (line, i) {
+      log.append(h("p", { class: "bootline" + (i === lines.length - 1 ? " hot" : "") }, "> " + line));
+    });
     const wrap = h("div", { class: "view" });
-    wrap.append(h("div", { class: "scroll boot" },
-      h("p", { class: "kicker" }, "Civic Range Authority"),
+    const scroll = h("div", { class: "scroll boot" },
+      h("p", { class: "kicker" }, "Civic Range // jack-in"),
       h("h1", { class: "wordmark glitch" }, "Night Audit"),
-      h("p", {}, "Handset 04 · Cinderwharf"),
-      h("p", {}, "Envelope sealed. No carrier traffic."),
-      h("p", { class: "lead" }, "Helix Dyne's staging range lives in this client. The city outside it does not. You were hired to break the copy and write down what you found."),
-      h("button", { class: "btn primary", onClick: function () { go("ident"); } }, "Open the locker")
-    ));
+      log,
+      h("p", {}, "Handset 04 · the sprawl of Cinderwharf"),
+      h("p", { class: "lead" }, "Helix Dyne's staging range lives in this client. The city outside the glass does not. You were hired to break the copy and write down what you found.")
+    );
+    if (done) {
+      scroll.append(h("button", { class: "btn primary", id: "jack-in", onClick: function () { go("ident"); } }, "Jack in"));
+    }
+    wrap.append(scroll);
     return wrap;
   }
 
@@ -412,11 +575,11 @@
     }
     wrap.append(h("div", { class: "scroll ident" },
       h("p", { class: "kicker" }, "Locker tag"),
-      h("h2", { class: "greet" }, "Who's joining the channel?"),
-      h("p", { class: "sub" }, "The Lowlight ran your Beacon piece. Quill will use whatever name you give the cell."),
+      h("h2", { class: "greet glitch" }, "Who's jacking into the channel?"),
+      h("p", { class: "sub" }, "The Lowlight ran your Beacon piece through the sprawl. Quill will burn whatever name you give the cell."),
       h("label", { class: "field" }, "Name", name),
       h("label", { class: "field" }, "Callsign", call),
-      h("button", { class: "btn primary", onClick: function () { take(false); } }, "Join the channel"),
+      h("button", { class: "btn primary", onClick: function () { take(false); } }, "Jack into the channel"),
       h("button", { class: "ghost", onClick: function () { take(true); } }, "Use the byline · Rowe / LOW")
     ));
     return wrap;
@@ -495,8 +658,8 @@
       scroll.append(h("p", { class: "sub" }, "Dispatch hasn't opened a channel. Jobs are on the home screen."));
     } else {
       [
-        ["beacon", "Beacon Cell", "Quill · Rook · Lena"],
-        ["pix", "PIX", "Unknown number"]
+        ["beacon", "Beacon Cell", "QUILL · ROOK · VOSS"],
+        ["pix", "PIX", "ghost on the wire"]
       ].forEach(function (row) {
         const list = (run.transcript && run.transcript[row[0]]) || [];
         const last = list[list.length - 1];
@@ -527,9 +690,12 @@
       wrap.append(h("div", { class: "banner" }, "Filed chapter. Read only."));
     }
     const sc = h("div", { class: "scroll chat" });
+    const viewing = Game.viewingId && Game.viewingId();
+    const mark = chapterMark(viewing);
+    if (mark) sc.append(mark);
     const msgs = (run && run.transcript && run.transcript[thread]) || [];
     if (!msgs.length) sc.append(h("div", { class: "sysmsg" }, "The channel is quiet."));
-    msgs.forEach(function (m) { sc.append(bubble(m)); });
+    msgs.forEach(function (m, i) { sc.append(bubble(m, i === msgs.length - 1)); });
     if (!reviewing && active && active.typing && active.typing.thread === thread && Game.state.active === Game.viewingId()) {
       sc.append(h("div", { class: "msg" },
         h("div", { class: "who who-" + active.typing.who }, person(active.typing.who)),
@@ -550,17 +716,27 @@
   }
 
   function person(who) {
-    if (who === "quill") return "Quill";
-    if (who === "rook") return "Rook";
-    if (who === "lena") return "Lena";
-    if (who === "pix") return "PIX";
-    if (who === "you") return "You";
-    return who || "";
+    if (who === "you") {
+      const call = (Game.state && Game.state.player && Game.state.player.call) || "YOU";
+      return h("span", { class: "who-bits" },
+        h("span", { class: "avatar", "aria-hidden": "true" }, call.slice(0, 1)),
+        h("span", {}, call),
+        h("span", { class: "tag" }, "stringer")
+      );
+    }
+    const cast = CAST[who];
+    if (!cast) return who || "";
+    return h("span", { class: "who-bits" },
+      h("span", { class: "avatar", "aria-hidden": "true" }, cast.glyph),
+      h("span", {}, cast.handle),
+      h("span", { class: "tag" }, cast.tag)
+    );
   }
 
-  function bubble(m) {
+  function bubble(m, fresh) {
+    const beat = fresh ? " beat" : "";
     if (m.kind === "card" && m.card) {
-      return h("div", { class: "msg" },
+      return h("div", { class: "msg" + beat },
         h("div", { class: "who who-" + m.who }, person(m.who)),
         h("button", {
           class: "cardmsg",
@@ -568,10 +744,10 @@
         }, m.card.title, h("span", {}, m.card.sub || "Open"))
       );
     }
-    if (m.who === "system") return h("div", { class: "sysmsg" }, fill(m.text));
+    if (m.who === "system") return h("div", { class: "sysmsg" + beat }, "HANDSET // " + fill(m.text));
     const mine = m.who === "you";
-    return h("div", { class: "msg" + (mine ? " mine" : "") },
-      mine ? null : h("div", { class: "who who-" + m.who }, person(m.who)),
+    return h("div", { class: "msg" + (mine ? " mine" : "") + beat },
+      h("div", { class: "who who-" + m.who }, person(m.who)),
       h("div", { class: "bubble" }, fill(m.text)),
       h("div", { class: "when" }, fmtTime(m.time))
     );
@@ -593,6 +769,8 @@
       const run = Game.state.chapters[ch.id];
       const done = run && run.status === "done";
       const card = h("article", { class: "job" + (open ? "" : " locked") + (done ? " done" : "") });
+      const mark = chapterMark(ch.id);
+      if (mark) card.append(mark);
       card.append(h("div", { class: "jobn" }, String(ch.n).padStart(2, "0")));
       if (done) card.append(h("div", { class: "stamp" }, "FILED"));
       card.append(h("h3", {}, ch.title), h("p", { class: "concept" }, ch.concept));
@@ -1053,6 +1231,19 @@
       h("p", { class: "sub" }, "Night Audit is fiction. Helix Dyne, Cinderwharf, and every address in the lab were invented. Commands run in this browser. The debrief links are the only thing that leave, and they open public references in a new tab."),
       h("button", {
         class: "btn",
+        id: "sound-toggle",
+        onClick: function () {
+          const next = !soundOn();
+          Game.setSound(next);
+          AudioBus.set(next);
+          if (next) AudioBus.blip(880);
+        }
+      }, soundOn() ? "Synth hum: on" : "Synth hum: off"),
+      h("p", { class: "fine" }, AudioBus.supported()
+        ? "Optional. A local oscillator and short UI blips. Nothing is downloaded, and it stays off until you ask."
+        : "This browser has no WebAudio, so the hum stays silent."),
+      h("button", {
+        class: "btn",
         onClick: function () { Game.setFast(!fast); }
       }, fast ? "Fast messages: on" : "Fast messages: off"),
       h("p", { class: "fine" }, "Faster arrival. Hints still cost. The system setting for reduced motion does this too."),
@@ -1067,6 +1258,9 @@
               modal = null;
               stack = [{ name: "boot" }];
               inspected = {};
+              bootPhase = 1;
+              if (bootTimer) { clearTimeout(bootTimer); bootTimer = 0; }
+              AudioBus.set(false);
               Game.resetAll();
             }
           };
@@ -1151,6 +1345,108 @@
     const node = document.getElementById("clock");
     if (node) node.textContent = clock();
   }, 10000);
+
+  document.addEventListener("click", function (event) {
+    if (!soundOn()) return;
+    const hit = event.target && event.target.closest && event.target.closest("button, a");
+    if (!hit || hit.id === "sound-toggle") return;
+    AudioBus.blip(hit.classList.contains("primary") ? 740 : 520);
+  });
+
+  document.addEventListener("pointerdown", function () {
+    if (soundOn()) AudioBus.set(true);
+  }, { once: true });
+
+  function startCity() {
+    const canvas = document.getElementById("city");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const reduce = reducedMotion();
+    let drops = [];
+    let lights = [];
+    let running = true;
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drops = [];
+      const count = Math.min(70, Math.max(24, Math.floor(canvas.width / 22)));
+      for (let i = 0; i < count; i++) {
+        drops.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          z: 0.45 + Math.random() * 1.1,
+          len: 8 + Math.random() * 12
+        });
+      }
+      lights = [];
+      const glowCount = Math.min(28, Math.floor(canvas.width / 40));
+      for (let i = 0; i < glowCount; i++) {
+        lights.push({
+          x: Math.random() * canvas.width,
+          y: canvas.height * (0.15 + Math.random() * 0.75),
+          c: i % 3 === 0 ? "#ff2bd6" : i % 3 === 1 ? "#3dffe8" : "#c6ff3d",
+          p: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    function frame(t) {
+      if (!running) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "rgba(61, 255, 232, 0.06)";
+      ctx.lineWidth = 1;
+      const gap = 56;
+      const drift = reduce ? 0 : (t * 0.012) % gap;
+      for (let x = -gap + drift; x < canvas.width; x += gap) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x - 40, canvas.height);
+        ctx.stroke();
+      }
+      lights.forEach(function (L) {
+        ctx.globalAlpha = reduce ? 0.35 : 0.22 + Math.sin(t / 800 + L.p) * 0.18;
+        ctx.fillStyle = L.c;
+        ctx.fillRect(L.x, L.y, 2, 10);
+      });
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = "rgba(190, 236, 255, 0.45)";
+      drops.forEach(function (d) {
+        ctx.beginPath();
+        ctx.moveTo(d.x, d.y);
+        ctx.lineTo(d.x + 0.6, d.y + d.len);
+        ctx.stroke();
+        if (!reduce) {
+          d.y += 2.4 * d.z;
+          d.x += 0.25 * d.z;
+          if (d.y > canvas.height) {
+            d.y = -16;
+            d.x = Math.random() * canvas.width;
+          }
+        }
+      });
+      ctx.globalAlpha = 1;
+      if (!reduce) requestAnimationFrame(frame);
+    }
+    resize();
+    window.addEventListener("resize", function () {
+      resize();
+      if (reduce) frame(0);
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) {
+        running = false;
+        return;
+      }
+      if (!running && !reduce) {
+        running = true;
+        requestAnimationFrame(frame);
+      }
+    });
+    if (reduce) frame(0);
+    else requestAnimationFrame(frame);
+  }
+
+  startCity();
 
   Game.onChange = onGame;
   Game.init();

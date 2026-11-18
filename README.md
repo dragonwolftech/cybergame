@@ -19,7 +19,7 @@ Then open `http://127.0.0.1:8741`.
 3. **Beacon Cell** is the story. Reply when buttons appear. If PIX texts you, open that channel — the main one will wait.
 4. Cards in the chat open a lab tab: Terminal, Mail, Browser, or Files. The objective strip says what's left. **Hint** spends score: −10, then −20, then −30.
 5. Finish a chapter and read the debrief. It says what you did, what a defender would change, how it gets caught, and where to read further.
-6. Rank runs from Script Kiddie to Ghost. Score and the codex live in this browser (`localStorage`). Settings can wipe the client or speed the messages up.
+6. Rank runs from Script Kiddie to Ghost. Score and the codex live in this browser (`localStorage`). Settings can wipe the client, speed the messages up, or turn on a local synth hum. Sound stays off until you ask.
 
 Add `?fast=1` to the URL if you want messages to arrive quickly.
 
@@ -36,7 +36,7 @@ On a narrow screen, **Channels** opens the sidebar. It closes again when you pic
 | Browser | Clipped pages only: OSINT, the training login, the file site, the report |
 | Files | Documents the cell hands you |
 | Codex | Terms fill in as you file chapters |
-| Settings | Faster text, reset |
+| Settings | Faster text, optional synth, reset |
 
 Standing with the cell moves when you keep the scope, and when you don't. PIX is not on the contract.
 

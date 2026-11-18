@@ -32,7 +32,7 @@
     return {
       v: 1,
       player: null,
-      settings: { fast: false },
+      settings: { fast: false, sound: false },
       trust: { quill: 0, rook: 0, lena: 0, pix: 0 },
       trustLog: [],
       codex: ["range", "cell"],
@@ -101,7 +101,8 @@
       if (!raw) return freshState();
       const parsed = JSON.parse(raw);
       if (!parsed || parsed.v !== 1 || !parsed.trust) return freshState();
-      parsed.settings = parsed.settings || { fast: false };
+      parsed.settings = parsed.settings || { fast: false, sound: false };
+      if (typeof parsed.settings.sound !== "boolean") parsed.settings.sound = false;
       parsed.codex = parsed.codex || ["range", "cell"];
       parsed.best = parsed.best || {};
       parsed.chapters = parsed.chapters || {};
@@ -378,6 +379,11 @@
     },
     setFast: function (v) {
       state.settings.fast = !!v;
+      save();
+      emit();
+    },
+    setSound: function (v) {
+      state.settings.sound = !!v;
       save();
       emit();
     },
@@ -744,12 +750,12 @@
     scoreChapter: scoreChapter,
     ranks: RANKS,
     people: {
-      quill: { name: "Maren Quill", role: "Handler" },
-      rook: { name: "Rook", role: "Range" },
-      lena: { name: "Lena Voss", role: "Site contact" },
-      pix: { name: "PIX", role: "Unknown" },
-      you: { name: "You", role: "" },
-      system: { name: "Handset", role: "" }
+      quill: { name: "QUILL", role: "fixer" },
+      rook: { name: "ROOK", role: "netrunner" },
+      lena: { name: "VOSS", role: "corp liaison" },
+      pix: { name: "PIX", role: "ghost" },
+      you: { name: "YOU", role: "stringer" },
+      system: { name: "HANDSET", role: "wire" }
     }
   };
 

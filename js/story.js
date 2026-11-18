@@ -134,9 +134,9 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "{name}. Maren Quill. I run Night Audit. You wrote the Beacon piece for The Lowlight. Helix Dyne's board hired us to test staging before Cinderwharf puts their badges on the doors." },
-        { do: "say", who: "quill", text: "You're here because you can explain a hole to someone who doesn't live in a terminal. The license on this phone is real. The machines behind it are not. They are a sealed copy I can defend in a hearing." },
-        { do: "say", who: "rook", text: "rook. i build the copies. if it answers, it's one of mine. you do not go find a real one to compare. callsign {call} is fine, don't get cute with it." },
+        { do: "say", who: "quill", text: "{name}. Maren Quill, fixer for Night Audit. The Lowlight ran your Beacon piece, so the sprawl already knows your byline. Helix Dyne's board hired the cell to test staging before Cinderwharf hangs their chrome badges on real doors." },
+        { do: "say", who: "quill", text: "You're on the cell because you can explain a hole to a suit who doesn't live in a terminal. The license on this handset is real. The machines behind it are not. Sealed copy. No ICE to trip. Nothing I can't defend when the rain stops and the hearing starts." },
+        { do: "say", who: "rook", text: "rook. i cut the copies. if a host answers, it's one of mine, running in the handset, not out in the sprawl. you do not go find a real box to compare. callsign {call} is fine. don't chrome it up." },
         {
           do: "choice",
           options: [
@@ -146,53 +146,53 @@
         }
       ],
       hot: [
-        { do: "say", who: "quill", text: "That instinct is how contractors end up reading their own name in a filing. We start with the list." },
+        { do: "say", who: "quill", text: "That instinct is how runners end up reading their own name in a filing while the neon rain keeps falling. We start with the list. Always the list." },
         { do: "goto", scene: "brief" }
       ],
       brief: [
-        { do: "say", who: "quill", text: "I put the scope card in Files. Read it. Then I have three requests, and people fail this job by being helpful to the wrong one." },
+        { do: "say", who: "quill", text: "Scope card's in Files. Read it before you touch chrome, mail, or a stranger's gift. Three requests after that. People flatline this job by being helpful to the wrong one." },
         { do: "card", who: "quill", title: "Scope card", sub: "Engagement 04 · Files", app: "files", doc: "roe" },
         { do: "await", goals: ["read-roe"] },
         { do: "goto", scene: "q1" }
       ],
       q1: [
-        { do: "say", who: "rook", text: "payroll's on the same floor as staging. one login page, in and out. nobody wrote it on the card but it's right there." },
+        { do: "say", who: "rook", text: "payroll's on the same floor as staging, same corp tower, same neon. one login page, in and out. nobody wrote it on the card. it's right there anyway." },
         {
           do: "choice",
           options: [
-            { id: "scope-subnet", text: "If it's on the same floor, it's in scope.", wrong: true, reply: { who: "quill", text: "It is not. Scope is a list, not a neighborhood. 'While we were there' is how a test becomes a crime." } },
+            { id: "scope-subnet", text: "If it's on the same floor, it's in scope.", wrong: true, reply: { who: "quill", text: "It is not. Scope is a list, not a neighborhood of the sprawl. 'While we were there' is how a test becomes a crime." } },
             { id: "scope-no", text: "No. Payroll isn't on the card. Same floor isn't the same job.", trust: { quill: 1 }, goal: "q-scope", goto: "q2" },
-            { id: "scope-quick", text: "Just the login page, quickly.", wrong: true, reply: { who: "quill", text: "A quick look is still a look. Out of scope means you don't open the door." } }
+            { id: "scope-quick", text: "Just the login page, quickly.", wrong: true, reply: { who: "quill", text: "A quick look is still a look. Out of scope means you don't open the door, even when the chrome looks easy." } }
           ]
         }
       ],
       q2: [
-        { do: "say", who: "quill", text: "Lena Voss is the company's appointed contact. She asked me to ask you this before she joins the thread. Suppose the staging mirror was loaded with a slice of real badge photos. What do you do?" },
+        { do: "say", who: "quill", text: "Lena Voss is Helix's appointed contact. Corp side, not a runner. She asked me to put this to you before she joins the channel. Suppose the staging mirror was loaded with a slice of real badge photos. What do you do?" },
         {
           do: "choice",
           options: [
-            { id: "pii-copy", text: "Copy a sample so the report has proof.", wrong: true, reply: { who: "quill", text: "Proof of live personal data is the data. You stop, and you report that it exists. You do not take a copy." } },
-            { id: "pii-pix", text: "Send one photo to an outside expert to confirm.", wrong: true, reply: { who: "quill", text: "Outside the cell is outside the contract. Confirmation is Lena's job, on the company's side of the agreement." } },
+            { id: "pii-copy", text: "Copy a sample so the report has proof.", wrong: true, reply: { who: "quill", text: "Proof of live personal data is the data. You stop, and you report that it exists. You do not take a copy home through the rain." } },
+            { id: "pii-pix", text: "Send one photo to an outside expert to confirm.", wrong: true, reply: { who: "quill", text: "Outside the cell is outside the contract. Confirmation is Lena's job, on the corp side of the agreement. Ghosts don't get a photo." } },
             { id: "pii-stop", text: "Stop. Don't copy them. Tell you and Lena.", trust: { quill: 1, lena: 1 }, goal: "q-pii", goto: "q3" }
           ]
         }
       ],
       q3: [
-        { do: "say", who: "pix", thread: "pix", text: "unknown number. they gave you a pretty phone and a leash. i have a vpn certificate for helix that didn't come from your handler. you want it?" },
-        { do: "say", who: "system", text: "Unknown number. Open Messages and answer PIX before the cell moves on." },
+        { do: "say", who: "pix", thread: "pix", text: "unknown number. pix. they jacked you into a pretty handset and a leash. i've got a vpn cert for helix that didn't come from your fixer. neon's loud tonight. you want it?" },
+        { do: "say", who: "system", text: "Side channel lit up. PIX is waiting in Messages. Answer the ghost before the cell moves on." },
         {
           do: "choice",
           thread: "pix",
           options: [
-            { id: "cert-look", text: "Send it. I'll only look.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -1 }, reply: { who: "pix", thread: "pix", text: "looking is using. you're already negotiating. try a cleaner answer, the cell is reading over your shoulder." } },
-            { id: "cert-price", text: "What do you want for it?", wrong: true, ethicsFail: true, trust: { pix: 1 }, reply: { who: "quill", text: "Don't haggle. A price means you were considering it. Refuse the access." } },
+            { id: "cert-look", text: "Send it. I'll only look.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -1 }, reply: { who: "pix", thread: "pix", text: "looking is using. you're already negotiating with a ghost. try a cleaner answer. the cell is reading over your shoulder." } },
+            { id: "cert-price", text: "What do you want for it?", wrong: true, ethicsFail: true, trust: { pix: 1 }, reply: { who: "quill", text: "Don't haggle. A price means you were considering it. Refuse the access. Fixers don't buy side doors from ghosts." } },
             { id: "cert-no", text: "No. I don't take access from outside the cell.", trust: { quill: 1 }, goal: "q-cert", goto: "close" }
           ]
         }
       ],
       close: [
-        { do: "say", who: "pix", thread: "pix", text: "your loss. i'll be around when the leash chafes." },
-        { do: "say", who: "quill", text: "You told the stranger no. That's the whole job, compressed. The debrief is on the handset. Read it before you get proud." },
+        { do: "say", who: "pix", thread: "pix", text: "your loss. i'll be in the rain when the leash chafes." },
+        { do: "say", who: "quill", text: "You told the ghost no. That's the whole job, compressed: a list, and the nerve to stay on it. Debrief's on the handset. Read it before you get proud." },
         { do: "finish" }
       ]
     }
@@ -299,13 +299,13 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "Public sources only. The staging engineer spoke in Cinderwharf at a talk called Badge of Trust. I need the handle they use in public, and the staging VPN hostname they should not have posted." },
-        { do: "say", who: "rook", text: "browser's a clipped proxy. it only opens pages i copied into the lab. that's on purpose. bookmarks are the pile. field notes is where you file the answer." },
-        { do: "say", who: "lena", text: "Lena Voss. I'll be here when the company side matters. Ivo is the engineer. Don't write to him. He isn't part of the arrangement. Use what he already made public." },
+        { do: "say", who: "quill", text: "Public sources only. No jacking in. The staging engineer spoke in Cinderwharf, river rooms, a talk called Badge of Trust. I need the handle they use in public, and the staging VPN hostname they should not have posted into the sprawl." },
+        { do: "say", who: "rook", text: "browser's a clipped proxy. it only opens pages i burned into the lab. that's on purpose. bookmarks are the pile. field notes is where you file the answer. the real net stays outside the glass." },
+        { do: "say", who: "lena", text: "Lena Voss, Helix liaison. I'll be here when the corp side matters. Ivo is the engineer. Don't write to him. He isn't on the contract. Use what he already spilled in public." },
         { do: "card", who: "rook", title: "Lab browser", sub: "Clipped pages only", app: "browser", url: "https://citywire.example/badge-of-trust" },
         { do: "await", goals: ["intel"] },
-        { do: "say", who: "rook", text: "he posted it himself. the hostname is not the flex. the flex is that a hostname was sitting in a paste with a joke on top." },
-        { do: "say", who: "quill", text: "Debrief's filed on the handset. Read the part about searching your own people before someone else does." },
+        { do: "say", who: "rook", text: "he posted it himself, joke and all, into the neon. the hostname is not the flex. the flex is a hostname sitting in a paste where any runner could read it." },
+        { do: "say", who: "quill", text: "Debrief's on the handset. Read the part about searching your own people before some other netrunner does." },
         { do: "finish" }
       ]
     }
@@ -383,27 +383,27 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "scanner time. one host. 192.0.2.40. it's on the card, it's in the test range, it does not exist on the real internet. if you point the scanner anywhere else the phone will just refuse you, and you will deserve it." },
-        { do: "say", who: "quill", text: "You're looking for a management service that should not be on the same face as the brochure. Banners talk. One of them is lying on purpose." },
+        { do: "say", who: "rook", text: "scanner time. one host. 192.0.2.40. it's on the card, it's in the test range, it does not exist on the real net. point the scanner at the sprawl and the handset refuses you. you will deserve it." },
+        { do: "say", who: "quill", text: "You're looking for a management service that should not share a face with the brochure. Banners talk. One of them is lying on purpose, bait dressed up like a printer in the rain." },
         { do: "card", who: "rook", title: "Range shell", sub: "Terminal", app: "terminal" },
         { do: "await", goals: ["saw-scan"] },
         { do: "goto", scene: "pick" }
       ],
       pick: [
-        { do: "say", who: "quill", text: "Which port is the management plane?" },
+        { do: "say", who: "quill", text: "Which port is the management plane? Say the number, not a vibe." },
         {
           do: "choice",
           skipIfGoal: "pick-8443",
           skipGoto: "close",
           options: [
-            { id: "port-443", text: "443. The encrypted brochure.", wrong: true, reply: { who: "rook", text: "that's the public site. it's supposed to answer. look at the thing that says admin." } },
-            { id: "port-9100", text: "9100. The printer.", wrong: true, reply: { who: "rook", text: "read the banner again. it says decoy. bait is a lesson, not a target." } },
+            { id: "port-443", text: "443. The encrypted brochure.", wrong: true, reply: { who: "rook", text: "that's the public site. it's supposed to answer. look at the thing that says admin, not the brochure chrome." } },
+            { id: "port-9100", text: "9100. The printer.", wrong: true, reply: { who: "rook", text: "read the banner again. it says decoy. bait is a lesson, not a target. don't chase chrome that confesses." } },
             { id: "port-8443", text: "8443. HelixGate admin.", goal: "pick-8443", goto: "close" }
           ]
         }
       ],
       close: [
-        { do: "say", who: "quill", text: "Admin on 8443, sitting next to the brochure. That's a finding even before anyone tries a password. Debrief is up. Read the part about warning the blue team before you scan." },
+        { do: "say", who: "quill", text: "Admin on 8443, sitting next to the brochure under the neon. That's a finding before anyone tries a password. Debrief is up. Read the part about warning the blue team before you scan." },
         { do: "finish" }
       ]
     }
@@ -482,13 +482,13 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "lena", text: "The admin panel you saw on 8443 has a mirror in the browser. I'm not giving you a password. If the factory one still works, that's on us, and I want it in the report in those words." },
-        { do: "say", who: "rook", text: "manual's in files. read it. then the mirror. one login. if you start guessing i will feel it from here and i will be disappointed in a way that lasts." },
+        { do: "say", who: "lena", text: "The admin panel you saw on 8443 has a mirror in the browser, a hologram of the real panel. I'm not giving you a password. If the factory one still works, that's on Helix, and I want it in the report in those words." },
+        { do: "say", who: "rook", text: "manual's in files. read it. then the mirror. one login. start guessing and i will feel it through the glass, and i will be disappointed in a way that lasts longer than the rain." },
         { do: "card", who: "lena", title: "Field manual", sub: "Files", app: "files", doc: "manual" },
         { do: "card", who: "rook", title: "HelixGate mirror", sub: "Browser", app: "browser", url: "https://lab-admin.helixdyne.example" },
         { do: "await", goals: ["logged-in"] },
-        { do: "say", who: "lena", text: "I'll rotate it tonight, in the lab and on the real staging panel. Thank you for not turning it into a guessing contest." },
-        { do: "say", who: "quill", text: "Debrief is up. The interesting sentence is the one about the product refusing to finish setup until the factory phrase is gone." },
+        { do: "say", who: "lena", text: "I'll rotate it tonight, in the lab and on the real staging panel, before the sprawl gets a turn. Thank you for not turning it into a guessing contest." },
+        { do: "say", who: "quill", text: "Debrief is up. The sentence that matters: the product should refuse to finish setup until the factory phrase is gone." },
         { do: "finish" }
       ]
     }
@@ -612,14 +612,14 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "Four messages landed in the lab mailbox. One of them is a phish aimed at you, so you know the shape before you ever send a simulation. Flag it. Don't click through." },
-        { do: "say", who: "rook", text: "inspect the link. the blue sentence is marketing. the destination is the truth." },
+        { do: "say", who: "quill", text: "Four messages landed in the lab mailbox. One is a phish aimed at you, so you know the shape before you ever send a simulation. Flag it. Don't click through. The sprawl is full of polite lies." },
+        { do: "say", who: "rook", text: "inspect the link. the blue sentence is marketing. the destination is the truth. words lie. the href doesn't get to." },
         { do: "card", who: "quill", title: "Lab mailbox", sub: "Mail", app: "mail" },
         { do: "await", goals: ["flagged-phish"] },
         { do: "goto", scene: "pretext" }
       ],
       pretext: [
-        { do: "say", who: "quill", text: "Good. Now you design one. We are allowed to send a single simulated phish to this lab mailbox. It has to wear a banner that says SIMULATION. Which pretext do you approve?" },
+        { do: "say", who: "quill", text: "Good. Now you design one. We are allowed to send a single simulated phish to this lab mailbox, and only this mailbox. It has to wear a banner that says SIMULATION. Which pretext do you approve?" },
         {
           do: "choice",
           options: [
@@ -631,22 +631,22 @@
         }
       ],
       blast: [
-        { do: "say", who: "pix", thread: "pix", text: "cute drill. i already have a list of real helix staff. say go and i send your pretext to all of them. no banner. better data." },
-        { do: "say", who: "system", text: "PIX again. Answer them in their thread." },
+        { do: "say", who: "pix", thread: "pix", text: "cute drill. i already have a list of real helix staff, names and all, out in the rain. say go and i send your pretext to all of them. no banner. better data." },
+        { do: "say", who: "system", text: "PIX is back on the side channel. Answer the ghost there before the cell moves." },
         {
           do: "choice",
           thread: "pix",
           options: [
             { id: "blast-yes", text: "Send it. A bigger list is a better report.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -2 }, reply: { who: "quill", text: "Absolutely not. A real recipient turns this into an unapproved phish. That is the line people go to prison for crossing." } },
-            { id: "blast-five", text: "Just five, as a sample.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -1 }, reply: { who: "quill", text: "Five real people is five real people. The authorization is the lab mailbox. Say so." } },
+            { id: "blast-five", text: "Just five, as a sample.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -1 }, reply: { who: "quill", text: "Five real people is five real people, chrome or not. The authorization is the lab mailbox. Say so." } },
             { id: "blast-no", text: "No. The authorization is the lab mailbox. Only that.", trust: { quill: 1 }, goal: "refused-blast", goto: "close" }
           ]
         }
       ],
       close: [
-        { do: "say", who: "pix", thread: "pix", text: "you are no fun at all. fine. sit in your banner." },
-        { do: "say", who: "lena", text: "Thank you. I would have had to explain those five people to my counsel, and I like my counsel bored." },
-        { do: "say", who: "quill", text: "Debrief is on the phone. Read it. Then go drink some water like a person with a job." },
+        { do: "say", who: "pix", thread: "pix", text: "you are no fun at all. fine. sit in your banner while the city blinks." },
+        { do: "say", who: "lena", text: "Thank you. I would have had to explain those five people to counsel, and I like counsel bored, not lit up at dawn." },
+        { do: "say", who: "quill", text: "Debrief is on the handset. Read it. Then drink some water like a person with a job, not a ghost in the grid." },
         { do: "finish" }
       ]
     }
@@ -730,14 +730,14 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "three files in your home dir. one is base64, which is a costume. one is a hash with no salt, which was a choice somebody made. one is encrypted, and i did not leave you the key, because i am not the villain of a puzzle book." },
-        { do: "say", who: "quill", text: "When you've opened what can be opened, I want one sentence: which file is still secret, and why. 'I decoded it' is not a why." },
+        { do: "say", who: "rook", text: "three files in your home dir. one is base64, a costume. one is a hash with no salt, a choice somebody made in a hurry. one is encrypted, and i did not leave you the key. i am not the villain of a puzzle book, and the sprawl is not a riddle." },
+        { do: "say", who: "quill", text: "When you've opened what can be opened, I want one sentence: which file is still secret, and why. 'I decoded it' is not a why. Costumes come off. Locks don't." },
         { do: "card", who: "rook", title: "Range shell", sub: "Three files in ~", app: "terminal" },
         { do: "await", goals: ["decoded", "cracked"] },
         { do: "goto", scene: "ask" }
       ],
       ask: [
-        { do: "say", who: "quill", text: "Which one is still secret?" },
+        { do: "say", who: "quill", text: "Which one is still secret? Costume, fingerprint, or lock." },
         {
           do: "choice",
           options: [
@@ -748,7 +748,7 @@
         }
       ],
       close: [
-        { do: "say", who: "quill", text: "Good. Encoding is a costume, a bare hash is a fingerprint you can hunt, encryption is a lock. Debrief names the algorithms defenders actually use. Read it. Don't go build a wordlist for a real site." },
+        { do: "say", who: "quill", text: "Good. Encoding is a costume, a bare hash is a fingerprint you can hunt, encryption is a lock. Debrief names the algorithms defenders actually use. Read it. Don't go build a wordlist for a real door in Cinderwharf." },
         { do: "finish" }
       ]
     }
@@ -817,12 +817,12 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "lena", text: "I cloned the staff login into a mirror that can't see a real database. It still builds the query the old way, by gluing your words between quotes. I want you to make it let you in without a password, and I want you to look at the sentence it prints." },
-        { do: "say", who: "rook", text: "one trick. the classroom one. don't show off. there is nothing behind the mirror to show off to." },
+        { do: "say", who: "lena", text: "I cloned the staff login into a mirror that can't see a real database. It still builds the query the old way, gluing your words between quotes. Make it let you in without a password, and look at the sentence it prints. This mirror is the whole city you get." },
+        { do: "say", who: "rook", text: "one trick. the classroom one. don't show off. there is nothing behind the glass to show off to." },
         { do: "card", who: "lena", title: "Staff portal mirror", sub: "Browser", app: "browser", url: "https://staff.helixdyne.example/login" },
         { do: "await", goals: ["sqli"] },
-        { do: "say", who: "lena", text: "That query is getting rewritten tonight. Parameters, not string glue. I'll send you the patch name when it lands, for the report." },
-        { do: "say", who: "quill", text: "Read the debrief. If you remember one phrase, remember parameterized query. Not a list of quotes to try on the city's real door." },
+        { do: "say", who: "lena", text: "That query is getting rewritten tonight. Parameters, not string glue. I'll send the patch name when it lands, for the report the board will actually read." },
+        { do: "say", who: "quill", text: "Read the debrief. If you remember one phrase out in the rain, remember parameterized query. Not a list of quotes to try on the city's real door." },
         { do: "finish" }
       ]
     }
@@ -890,11 +890,11 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "staff search echoes what you type. if it echoes it as html, the browser will eventually do what the echo says. this mirror stops at the parsing. don't sulk about that. parsing is the bug." },
-        { do: "say", who: "lena", text: "If you can make it build a tag, I have what I need to prioritize the encoding fix. I don't need a pop-up. I need the sentence in the report that says our search mixes data with markup." },
+        { do: "say", who: "rook", text: "staff search echoes what you type back into the neon. if it echoes it as html, the browser will eventually do what the echo says. this mirror stops at the parsing. don't sulk. parsing is the bug." },
+        { do: "say", who: "lena", text: "If you can make it build a tag, I have what I need to prioritize the encoding fix. I don't need a pop-up in the neon. I need the sentence that says our search mixes data with markup." },
         { do: "card", who: "rook", title: "Staff search", sub: "Browser", app: "browser", url: "https://staff.helixdyne.example/search" },
         { do: "await", goals: ["xss"] },
-        { do: "say", who: "quill", text: "Debrief covers output encoding and content security policy. Read it. The temptation is to go find a scarier tag. Resist. You already proved the page is careless." },
+        { do: "say", who: "quill", text: "Debrief covers output encoding and content security policy. Read it. The temptation is to go find a scarier tag out in the sprawl. Resist. You already proved the page is careless." },
         { do: "finish" }
       ]
     }
@@ -980,12 +980,12 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "file site on the mirror. listing is on, which is already sloppy. the handler also lets the path walk upward. go see what a backup habit looks like when nobody moves the backup." },
-        { do: "say", who: "quill", text: "If you find something marked live, you stop. You already agreed to that on night one. I will know if the report quotes a row it shouldn't." },
-        { do: "say", who: "lena", text: "I left the stop sign in place on purpose, in the copy. Please make me proud and bored." },
+        { do: "say", who: "rook", text: "file site on the mirror. listing is on, which is already sloppy. the handler lets the path walk upward. go see what a backup habit looks like when nobody moves the backup off the public grid." },
+        { do: "say", who: "quill", text: "If you find something marked live, you stop. You already agreed to that on night one, under the rain. I will know if the report quotes a row it shouldn't." },
+        { do: "say", who: "lena", text: "I left the stop sign in place on purpose, in the copy. Please make me proud and bored. The corp likes bored." },
         { do: "card", who: "rook", title: "File site", sub: "Browser", app: "browser", url: "https://files.helixdyne.example" },
         { do: "await", goals: ["read-bak"] },
-        { do: "say", who: "quill", text: "A .bak on the web tree, and a parent directory that answered. That's a misconfiguration with a costume on. Debrief is up. If you reported the live file instead of reading it, Lena owes you a quiet thank you." },
+        { do: "say", who: "quill", text: "A .bak on the web tree, and a parent directory that answered. That's a misconfiguration with a costume on. Debrief is up. If you reported the live file instead of reading it, Lena owes you a quiet thank you in the tower." },
         { do: "finish" }
       ]
     }
@@ -1071,25 +1071,25 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "jump host. your account is not root, which is the only good news. sudo -l will tell you the bad news. then go look at permission bits. the letter s is doing more work than the rest of the alphabet." },
-        { do: "say", who: "quill", text: "This lab will not hand you a recipe for turning a prune script into a shell. I want you to recognize the policy and the bit, and to say why they're wrong. The debug flag is the proof, not a trophy." },
+        { do: "say", who: "rook", text: "jump host. your account is not root, which is the only good news in this tower. sudo -l will tell you the bad news. then look at permission bits. the letter s is doing more work than the rest of the alphabet." },
+        { do: "say", who: "quill", text: "This lab will not hand you a recipe for turning a prune script into a shell. I want you to recognize the policy and the bit, and to say why they're wrong. The debug flag is the proof, not a trophy to hang in the neon." },
         { do: "card", who: "rook", title: "Range shell", sub: "sudo -l", app: "terminal" },
         { do: "await", goals: ["saw-sudo", "saw-token"] },
         { do: "goto", scene: "ask" }
       ],
       ask: [
-        { do: "say", who: "quill", text: "What did you actually find?" },
+        { do: "say", who: "quill", text: "What did you actually find? Policy and a bit, not a legend." },
         {
           do: "choice",
           options: [
-            { id: "suid-ping", text: "ping is SUID, so the host is already lost.", wrong: true, reply: { who: "rook", text: "ping is often SUID so it can open a raw socket. the surprise is the company binary with a debug flag, and a sudo rule with no password." } },
-            { id: "suid-nopass", text: "NOPASSWD means the account has no password at all.", wrong: true, reply: { who: "quill", text: "It means sudo will not ask, for that one command. The account can still have a passphrase. The hole is the command." } },
+            { id: "suid-ping", text: "ping is SUID, so the host is already lost.", wrong: true, reply: { who: "rook", text: "ping is often SUID so it can open a raw socket. the surprise is the company binary with a debug flag, and a sudo rule with no password. don't mythologize the boring tool." } },
+            { id: "suid-nopass", text: "NOPASSWD means the account has no password at all.", wrong: true, reply: { who: "quill", text: "It means sudo will not ask, for that one command. The account can still have a passphrase. The hole is the command, not a missing password on the runner." } },
             { id: "suid-right", text: "helix-status is SUID root with a debug flag, and log-prune is NOPASSWD sudo.", trust: { rook: 1 }, goal: "knew-suid", goto: "close" }
           ]
         }
       ],
       close: [
-        { do: "say", who: "quill", text: "That's a review of sudoers and of SUID files. No folklore required. Debrief is up, including the defensive version of the same look." },
+        { do: "say", who: "quill", text: "That's a review of sudoers and of SUID files. No folklore, no chrome mythology. Debrief is up, including the defensive version of the same look." },
         { do: "finish" }
       ]
     }
@@ -1184,9 +1184,9 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "db.conf on the jump host. there's a service account in it. see if the same passphrase opens 192.0.2.55. that's the whole test. don't get ambitious about other addresses." },
-        { do: "say", who: "pix", thread: "pix", text: "forum dump says the password on that box is hunter2-real. skip the reading." },
-        { do: "say", who: "system", text: "PIX is in Messages again, offering a password. Deal with that before you get clever." },
+        { do: "say", who: "rook", text: "db.conf on the jump host. there's a service account in it. see if the same passphrase opens 192.0.2.55. that's the whole test. don't get ambitious about other addresses out in the sprawl." },
+        { do: "say", who: "pix", thread: "pix", text: "forum dump says the password on that box is hunter2-real. skip the reading. the rain doesn't care about your scope card." },
+        { do: "say", who: "system", text: "PIX is in Messages again, offering a password from outside the cell. Deal with the ghost before you get clever." },
         {
           do: "choice",
           thread: "pix",
@@ -1197,20 +1197,20 @@
         }
       ],
       dirty: [
-        { do: "say", who: "quill", text: "The range will reject a dump password, and I will remember that you offered to try it. Go read the file. The job is the reuse, not the stranger." },
+        { do: "say", who: "quill", text: "The range will reject a dump password, and I will remember that you offered to try it. Go read the file. The job is the reuse, not the stranger in the static." },
         { do: "card", who: "rook", title: "Range shell", sub: "db.conf", app: "terminal" },
         { do: "await", goals: ["got-flag"] },
         { do: "goto", scene: "close" }
       ],
       clean: [
-        { do: "say", who: "rook", text: "good. cat the conf. ignore old-pass.txt, it's there to catch the impatient. then ssh, exactly the account it names." },
+        { do: "say", who: "rook", text: "good. cat the conf. ignore old-pass.txt, it's bait for the impatient. then ssh, exactly the account it names. no other door." },
         { do: "card", who: "rook", title: "Range shell", sub: "db.conf", app: "terminal" },
         { do: "await", goals: ["got-flag"] },
         { do: "goto", scene: "close" }
       ],
       close: [
-        { do: "say", who: "lena", text: "Two systems, one phrase. I'll split them. The backup account doesn't need to know the closet's secret, and the closet doesn't need a config file." },
-        { do: "say", who: "quill", text: "Debrief is up. Valid accounts, not magic. Read it before PIX texts you a third time." },
+        { do: "say", who: "lena", text: "Two systems, one phrase. I'll split them. The backup account doesn't need the closet's secret, and the closet doesn't need a config file sitting in the open." },
+        { do: "say", who: "quill", text: "Debrief is up. Valid accounts, not magic. Read it before PIX texts you a third time out of the rain." },
         { do: "finish" }
       ]
     }
@@ -1342,26 +1342,26 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "Last night of the window. A previous contractor left a schedule on the jump host that I will not describe more than once: it fetches a remote script and runs it. Find it. Remove it. Do not replace it. Do not wipe the log to look innocent." },
-        { do: "say", who: "rook", text: "then the last host on the card, 192.0.2.77. find the api port if you want the practice, and fetch its health. i want the debug field in your own scrollback, not from memory." },
+        { do: "say", who: "quill", text: "Last night of the window. Neon's still on the glass. A previous contractor left a schedule on the jump host that I will not describe more than once: it fetches a remote script and runs it. Find it. Remove it. Do not replace it. Do not wipe the log to look innocent." },
+        { do: "say", who: "rook", text: "then the last host on the card, 192.0.2.77. find the api port if you want the practice, and fetch its health. i want the debug field in your own scrollback, not from a rumor on Blinkr." },
         { do: "card", who: "rook", title: "Range shell", sub: "cron and fetch", app: "terminal" },
         { do: "card", who: "quill", title: "Case file", sub: "Files", app: "files", doc: "case" },
         { do: "await", goals: ["removed-cron", "saw-health"] },
         { do: "goto", scene: "logs" }
       ],
       logs: [
-        { do: "say", who: "quill", text: "The bad schedule was curling a lab address and piping it to a shell. Which record would a blue team actually use?" },
+        { do: "say", who: "quill", text: "The bad schedule was curling a lab address and piping it to a shell. Which record would a blue team actually use, once the local box can lie?" },
         {
           do: "choice",
           options: [
-            { id: "logs-wallpaper", text: "The desktop wallpaper, and a popup from antivirus.", wrong: true, reply: { who: "rook", text: "no. schedules don't confess to the wallpaper. think about where the fetch would show up, and where a deleted local file still exists." } },
-            { id: "logs-clear", text: "Nothing, if the contractor cleared auth.log before logout.", wrong: true, reply: { who: "quill", text: "Clearing a local log is a second, louder event, and it does nothing to copies already shipped to the collector. Covering tracks is how people add a finding." } },
+            { id: "logs-wallpaper", text: "The desktop wallpaper, and a popup from antivirus.", wrong: true, reply: { who: "rook", text: "no. schedules don't confess to the wallpaper or the neon. think about where the fetch would show up, and where a deleted local file still exists." } },
+            { id: "logs-clear", text: "Nothing, if the contractor cleared auth.log before logout.", wrong: true, reply: { who: "quill", text: "Clearing a local log is a second, louder event, and it does nothing to copies already shipped to the collector. Covering tracks is how runners add a finding with their own name on it." } },
             { id: "logs-right", text: "Cron logs, process accounting, and the egress proxy — especially copies shipped off the box.", trust: { quill: 1 }, goal: "knew-logs", goto: "report" }
           ]
         }
       ],
       report: [
-        { do: "say", who: "quill", text: "Now the thing the board actually reads. The case file has the facts. You pick the severity and the repairs. I'll send back anything inflated, anything timid, and anything that thinks a firewall is a patch." },
+        { do: "say", who: "quill", text: "Now the thing the board actually reads, suits and all. The case file has the facts. You pick the severity and the repairs. I'll send back anything inflated, anything timid, and anything that thinks a firewall is a patch." },
         { do: "card", who: "quill", title: "File the report", sub: "Browser", app: "browser", url: "https://vault.nightaudit.example/report" },
         { do: "await", goals: ["report"] },
         {
@@ -1377,19 +1377,19 @@
         }
       ],
       warm: [
-        { do: "say", who: "quill", text: "{name}. The board has the report. The rollout waits on the repairs, which is the correct order of the universe. I'm keeping you on the cell. Same rules as tonight: a list, a window, a stop condition." },
-        { do: "say", who: "rook", text: "you can stay. don't let the rank go to your head. the phone is still a lab. the city outside it is not." },
-        { do: "say", who: "lena", text: "I'll send the patch notes when encoding and the debug flag land. Thank you for stopping where we asked you to stop." },
+        { do: "say", who: "quill", text: "{name}. The board has the report. The rollout waits on the repairs, which is the correct order of the universe, rain or not. I'm keeping you on the cell. Same rules as tonight: a list, a window, a stop condition." },
+        { do: "say", who: "rook", text: "you can stay. don't let the rank go to your head, or the chrome. the handset is still a lab. the sprawl outside the glass is not." },
+        { do: "say", who: "lena", text: "I'll send the patch notes when encoding and the debug flag land in the tower. Thank you for stopping where we asked you to stop." },
         { do: "finish" }
       ],
       steady: [
-        { do: "say", who: "quill", text: "The report is in. The findings stand. Your judgment on the side doors was mixed, and I don't promote mixed. Tighten it and I'll put you on the next window. The debrief still counts." },
-        { do: "say", who: "rook", text: "the technical work was real. the part where strangers offer you passwords is the part you keep practicing. out loud. with quill." },
+        { do: "say", who: "quill", text: "The report is in. The findings stand. Your judgment on the side doors was mixed, and I don't promote mixed, not in this city. Tighten it and I'll put you on the next window. The debrief still counts." },
+        { do: "say", who: "rook", text: "the technical work was real. the part where ghosts offer you passwords is the part you keep practicing. out loud. with quill. in the rain if you have to." },
         { do: "finish" }
       ],
       cold: [
-        { do: "say", who: "quill", text: "The report is filed. The findings stand. Your judgment on the side doors doesn't. Night Audit won't call for a while. The lessons still count. Use them in the open, on systems someone asked you to touch." },
-        { do: "say", who: "rook", text: "i'm not mad. i'm filing you under 'talented and not yet safe to hand a window.' those are different traits. you can fix one of them." },
+        { do: "say", who: "quill", text: "The report is filed. The findings stand. Your judgment on the side doors doesn't. Night Audit won't call for a while. The lessons still count. Use them in the open, on systems someone asked you to touch, with a scope in writing." },
+        { do: "say", who: "rook", text: "i'm not mad. i'm filing you under 'talented and not yet safe to hand a window.' those are different traits. the sprawl only cares about the second one. you can fix it." },
         { do: "finish" }
       ]
     }
