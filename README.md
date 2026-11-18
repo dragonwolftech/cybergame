@@ -36,7 +36,7 @@ On a phone, **Channels** opens the sidebar. A tool (terminal, mail, browser, fil
 | Browser | Clipped pages only: OSINT, the training login, the file site, the report |
 | Files | Documents the cell hands you |
 | Codex | Terms fill in as you file chapters |
-| Settings | Faster text, optional synth, reset |
+| Settings | Faster text, optional synth, export or import a save code, reset |
 
 Standing with the cell moves when you keep the scope, and when you don't. PIX is not on the contract.
 

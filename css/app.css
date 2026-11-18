@@ -750,6 +750,20 @@ h1, h2, .wordmark, .greet, .brand h1, .job h3, .debrief h2 {
 }
 
 .keys { display: none; margin: 0; }
+.savebox { margin: 8px 0 16px; }
+.savebox .codebox, #import-code {
+  width: 100%;
+  min-height: 96px;
+  font-size: 16px;
+  font-family: var(--mono);
+  word-break: break-all;
+  background: rgba(6, 10, 16, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  color: var(--text);
+}
+.modal p, .sheet p { white-space: pre-wrap; }
 button.navbtn, button.chan, .tabs button, .menu, .hintbtn, .choice, .btn, .ghost {
   min-height: 44px;
 }

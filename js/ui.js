@@ -16,6 +16,10 @@
   let bootTimer = 0;
   let pendingCmd = "";
   let lastThread = "beacon";
+  let exportCode = "";
+  let importNote = "";
+  let importPreview = null;
+  let copyNote = "";
 
   const GLOSS = [
     ["IP address", "The number of one computer on a network. Example: 192.0.2.40. That range is for labs, not the real internet."],
@@ -694,7 +698,8 @@
       h("h1", { class: "wordmark glitch" }, "Night Audit"),
       log,
       h("p", {}, "Handset 04 · the sprawl of Cinderwharf"),
-      h("p", { class: "lead" }, "You start from zero. The first lessons are words and six commands. Nothing here touches a real network.")
+      h("p", { class: "lead" }, "You start from zero. The first lessons are words and six commands. Nothing here touches a real network."),
+      h("p", { class: "fine" }, "To carry progress to another phone or computer, open Settings later and use Export save.")
     );
     if (Game.state && Game.state.notice) scroll.append(h("p", { class: "warn" }, Game.state.notice));
     if (done) {
@@ -909,6 +914,10 @@
     const wrap = h("div", { class: "view" });
     const sc = h("div", { class: "scroll" });
     sc.append(h("p", { class: "sub" }, "Start at Tier 0 if the words are new. One idea at a time. Hints are free in Tier 0 and Tier 1."));
+    sc.append(h("button", {
+      class: "btn",
+      onClick: function () { go("settings"); }
+    }, "Export or import a save code"));
     let lastTier = -1;
     const tierNames = ["Tier 0 · Basics", "Tier 1 · Beginner", "Tier 2 · Intermediate", "Tier 3 · Advanced"];
     NightAudit.chapters.forEach(function (ch) {
@@ -1377,6 +1386,173 @@
     return wrap;
   }
 
+  function previewLine(preview) {
+    return preview.who + " · " + preview.rank + " · " + preview.score + " banked · " + preview.reached;
+  }
+
+  function saveLink(code) {
+    return location.origin + location.pathname + location.search + "#save=" + encodeURIComponent(code);
+  }
+
+  function copyText(text, done) {
+    function fallback() {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.left = "-9999px";
+      document.body.append(area);
+      area.select();
+      try { document.execCommand("copy"); } catch (err) { /* the code stays on screen */ }
+      area.remove();
+      if (done) done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { if (done) done(); }).catch(fallback);
+    } else fallback();
+  }
+
+  function landAfterImport() {
+    const saved = Game.state;
+    if (saved.settings && saved.settings.sound) AudioBus.set(true);
+    else AudioBus.set(false);
+    inspected = {};
+    if (!saved.player) {
+      stack = [{ name: "boot" }];
+    } else {
+      const ui = saved.ui || { screen: "jobs" };
+      let screenName = ui.screen || "jobs";
+      const resume = ["jobs", "thread", "terminal", "mail", "letter", "browser", "files", "doc", "debrief"];
+      if (resume.indexOf(screenName) === -1) screenName = "jobs";
+      stack = [{ name: screenName, thread: ui.thread, doc: ui.doc, letter: ui.letter, entry: ui.entry }];
+      if (saved.pendingDebrief && stack[0].name !== "debrief") stack.push({ name: "debrief" });
+    }
+    navigated = true;
+    refresh();
+  }
+
+  function confirmImport(parsed) {
+    importPreview = parsed;
+    importNote = "";
+    modal = {
+      title: "Replace this handset?",
+      text: previewLine(parsed.preview) + ". This replaces the progress on this screen.",
+      yes: "Import save",
+      onYes: function () {
+        modal = null;
+        importPreview = null;
+        exportCode = "";
+        Game.applySave(parsed.state);
+        landAfterImport();
+      }
+    };
+    refresh();
+  }
+
+  function savePanel() {
+    const box = h("textarea", {
+      id: "import-code",
+      "data-keep": "1",
+      rows: "4",
+      spellcheck: "false",
+      autocapitalize: "off",
+      autocomplete: "off",
+      placeholder: "Paste a save code or a #save= link"
+    });
+    const kids = [
+      h("h2", { class: "ph" }, "Carry this handset"),
+      h("p", { class: "sub" }, "Export a code here, then import it on the other screen. Nothing is uploaded."),
+      h("button", {
+        class: "btn",
+        id: "export-save",
+        onClick: function () {
+          exportCode = Game.exportCode();
+          copyNote = "";
+          refresh();
+        }
+      }, "Export save")
+    ];
+    if (exportCode) {
+      kids.push(h("textarea", {
+        id: "export-code",
+        class: "codebox",
+        readonly: "readonly",
+        rows: "4",
+        spellcheck: "false"
+      }));
+      const area = kids[kids.length - 1];
+      area.value = exportCode;
+      const row = h("div", { class: "row" });
+      row.append(h("button", {
+        class: "btn",
+        id: "copy-save",
+        onClick: function () {
+          copyText(exportCode, function () {
+            copyNote = "Copied.";
+            refresh();
+          });
+        }
+      }, "Copy"));
+      row.append(h("button", {
+        class: "btn",
+        id: "copy-link",
+        onClick: function () {
+          copyText(saveLink(exportCode), function () {
+            copyNote = "Link copied.";
+            refresh();
+          });
+        }
+      }, "Copy link"));
+      if (typeof navigator.share === "function") {
+        row.append(h("button", {
+          class: "btn",
+          id: "share-save",
+          onClick: function () {
+            const link = saveLink(exportCode);
+            const payload = exportCode.length > 4000
+              ? { title: "Night Audit save", text: exportCode }
+              : { title: "Night Audit", text: "Open this to import the save.", url: link };
+            navigator.share(payload).catch(function () {
+              copyText(exportCode, function () {
+                copyNote = "Share didn't open. The code is copied instead.";
+                refresh();
+              });
+            });
+          }
+        }, "Share"));
+      }
+      kids.push(row);
+      if (copyNote) kids.push(h("p", { class: "oknote" }, copyNote));
+      kids.push(h("p", { class: "fine" }, "The link looks like this page with #save= and the code. Opening it asks before it replaces anything."));
+    }
+    kids.push(h("p", { class: "sub" }, "Import save"));
+    kids.push(box);
+    kids.push(h("button", {
+      class: "btn primary",
+      id: "import-check",
+      onClick: function () {
+        const parsed = Game.readCode(box.value);
+        if (!parsed.ok) {
+          importNote = parsed.error;
+          importPreview = null;
+          refresh();
+          return;
+        }
+        confirmImport(parsed);
+      }
+    }, "Check code"));
+    if (importNote) kids.push(h("p", { class: "warn", id: "import-error" }, importNote));
+    if (importPreview && importPreview.ok) {
+      kids.push(h("p", { class: "oknote", id: "import-preview" }, previewLine(importPreview.preview)));
+      kids.push(h("button", {
+        class: "btn primary",
+        id: "import-confirm",
+        onClick: function () { confirmImport(importPreview); }
+      }, "Import this save"));
+    }
+    return h("div", { class: "savebox" }, kids);
+  }
+
   function settingsView() {
     const wrap = h("div", { class: "view" });
     const fast = Game.state.settings && Game.state.settings.fast;
@@ -1400,6 +1576,7 @@
         onClick: function () { Game.setFast(!fast); }
       }, fast ? "Fast messages: on" : "Fast messages: off"),
       h("p", { class: "fine" }, "Faster arrival. Hints still cost. The system setting for reduced motion does this too."),
+      savePanel(),
       h("button", {
         class: "btn",
         onClick: function () {
@@ -1668,4 +1845,25 @@
   }
   ready = true;
   refresh();
+
+  (function offerLinkedSave() {
+    const hash = location.hash || "";
+    const match = hash.match(/^#save=([^&]+)$/);
+    if (!match) return;
+    let code = match[1];
+    try { code = decodeURIComponent(code); } catch (err) { /* use the raw hash */ }
+    history.replaceState(null, "", location.pathname + location.search);
+    const parsed = Game.readCode(code);
+    if (!parsed.ok) {
+      modal = {
+        title: "Save link",
+        text: parsed.error,
+        yes: "OK",
+        onYes: function () { modal = null; refresh(); }
+      };
+      refresh();
+      return;
+    }
+    confirmImport(parsed);
+  })();
 })();

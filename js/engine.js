@@ -93,16 +93,107 @@
     return hydrate(state.chapters[id]);
   }
 
-  function save() {
-    const copy = JSON.parse(JSON.stringify(state));
+  function persistable(source) {
+    const copy = JSON.parse(JSON.stringify(source));
     delete copy.hintSheet;
     delete copy.nudgeDebrief;
     delete copy.reviewing;
+    delete copy.notice;
     if (copy.settings) delete copy.settings.instant;
     Object.keys(copy.chapters || {}).forEach(function (id) {
       if (copy.chapters[id]) delete copy.chapters[id].typing;
     });
-    db.setItem(KEY, JSON.stringify(copy));
+    return copy;
+  }
+
+  function save() {
+    db.setItem(KEY, JSON.stringify(persistable(state)));
+  }
+
+  function utf8ToB64url(text) {
+    const bytes = unescape(encodeURIComponent(text));
+    return btoa(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  }
+
+  function b64urlToUtf8(text) {
+    const pad = text.length % 4 === 0 ? "" : "====".slice(text.length % 4);
+    const bytes = atob(text.replace(/-/g, "+").replace(/_/g, "/") + pad);
+    return decodeURIComponent(escape(bytes));
+  }
+
+  function checksum(json) {
+    return NA.sha256(json).slice(0, 10);
+  }
+
+  function extractCode(raw) {
+    let text = String(raw || "").trim();
+    const linked = text.match(/#save=([^\s&]+)/i);
+    if (linked) {
+      try { text = decodeURIComponent(linked[1]); } catch (err) { text = linked[1]; }
+    }
+    return text.replace(/\s+/g, "");
+  }
+
+  function normalize(parsed) {
+    parsed.v = 2;
+    parsed.notice = null;
+    parsed.settings = parsed.settings || { fast: false, sound: false };
+    if (typeof parsed.settings.sound !== "boolean") parsed.settings.sound = false;
+    if (parsed.settings) delete parsed.settings.instant;
+    parsed.codex = Array.isArray(parsed.codex) ? parsed.codex : ["range", "cell"];
+    parsed.best = parsed.best && typeof parsed.best === "object" ? parsed.best : {};
+    parsed.chapters = parsed.chapters && typeof parsed.chapters === "object" ? parsed.chapters : {};
+    parsed.trust = parsed.trust || { quill: 0, rook: 0, lena: 0, pix: 0 };
+    parsed.trustLog = Array.isArray(parsed.trustLog) ? parsed.trustLog : [];
+    parsed.hintSheet = null;
+    parsed.reviewing = null;
+    parsed.nudgeDebrief = false;
+    if (parsed.player) {
+      parsed.player = {
+        name: String(parsed.player.name || "Rowe").replace(/[<>]/g, "").trim().slice(0, 24) || "Rowe",
+        call: String(parsed.player.call || "LOW").replace(/[<>]/g, "").trim().slice(0, 12).toUpperCase() || "LOW"
+      };
+    }
+    return parsed;
+  }
+
+  function scoreOf(data) {
+    return Object.keys((data && data.best) || {}).reduce(function (sum, id) {
+      return sum + ((data.best[id] | 0) || 0);
+    }, 0);
+  }
+
+  function rankName(score) {
+    const rows = rankRows();
+    let name = rows[0].name;
+    rows.forEach(function (row) { if (score >= row.min) name = row.name; });
+    return name;
+  }
+
+  function describeSave(data) {
+    const score = scoreOf(data);
+    let reached = "No chapter finished yet";
+    let bestN = 0;
+    let bestTitle = "";
+    (NA.chapters || []).forEach(function (ch) {
+      const run = data.chapters && data.chapters[ch.id];
+      if (run && run.status === "done" && ch.n >= bestN) {
+        bestN = ch.n;
+        bestTitle = ch.title;
+      }
+    });
+    if (bestN) reached = "Through " + bestN + " · " + bestTitle;
+    if (data.active && data.chapters && data.chapters[data.active] && data.chapters[data.active].status !== "done") {
+      const ch = chapterById(data.active);
+      if (ch) reached = "In progress · " + ch.n + " " + ch.title;
+    }
+    const who = data.player ? (data.player.name + " / " + data.player.call) : "No name yet";
+    return {
+      who: who,
+      rank: rankName(score),
+      score: score,
+      reached: reached
+    };
   }
 
   function load() {
@@ -130,16 +221,7 @@
         db.removeItem(OLD_KEY);
         return freshState();
       }
-      parsed.settings = parsed.settings || { fast: false, sound: false };
-      if (typeof parsed.settings.sound !== "boolean") parsed.settings.sound = false;
-      parsed.codex = parsed.codex || ["range", "cell"];
-      parsed.best = parsed.best || {};
-      parsed.chapters = parsed.chapters || {};
-      parsed.trustLog = parsed.trustLog || [];
-      parsed.hintSheet = null;
-      parsed.reviewing = null;
-      parsed.nudgeDebrief = false;
-      return parsed;
+      return normalize(parsed);
     } catch (err) {
       return freshState();
     }
@@ -808,6 +890,48 @@
     },
     scoreChapter: scoreChapter,
     rankRows: rankRows,
+    exportCode: function () {
+      const json = JSON.stringify(persistable(state));
+      return "NA2." + utf8ToB64url(json) + "." + checksum(json);
+    },
+    readCode: function (raw) {
+      const code = extractCode(raw);
+      const parts = code.match(/^(NA\d+)\.([A-Za-z0-9_-]+)\.([a-f0-9]+)$/i);
+      if (!parts) {
+        return { ok: false, error: "That doesn't look like a Night Audit save code. Copy the whole code, including the NA2 at the start." };
+      }
+      if (parts[1].toUpperCase() !== "NA2") {
+        return { ok: false, error: "That save is from a different Night Audit version, so this page can't open it." };
+      }
+      let json = "";
+      try {
+        json = b64urlToUtf8(parts[2]);
+      } catch (err) {
+        return { ok: false, error: "That code is damaged. Copy it again, with no missing characters." };
+      }
+      if (checksum(json) !== parts[3].toLowerCase()) {
+        return { ok: false, error: "That code is damaged. The checksum doesn't match. Copy it again." };
+      }
+      let data = null;
+      try {
+        data = JSON.parse(json);
+      } catch (err) {
+        return { ok: false, error: "That code is damaged. Copy it again." };
+      }
+      if (!data || data.v !== 2 || !data.trust || typeof data.chapters !== "object") {
+        return { ok: false, error: "That save is from a different Night Audit version, so this page can't open it." };
+      }
+      data = normalize(data);
+      return { ok: true, state: data, preview: describeSave(data), code: code };
+    },
+    applySave: function (incoming) {
+      clearTimer();
+      state = normalize(JSON.parse(JSON.stringify(incoming)));
+      Game.state = state;
+      NA.lookingAt = null;
+      save();
+      emit();
+    },
     people: {
       quill: { name: "QUILL", role: "fixer" },
       rook: { name: "ROOK", role: "netrunner" },
