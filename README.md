@@ -25,7 +25,7 @@ Add `?fast=1` to the URL if you want messages to arrive quickly.
 
 ### The client
 
-On a narrow screen, **Channels** opens the sidebar. It closes again when you pick somewhere to go.
+On a phone, **Channels** opens the sidebar. A tool (terminal, mail, browser, files) fills the screen and **← Chat** closes it. On a wide screen the chat stays beside the tool. Keys 1–5 switch those panels when you are not typing. Esc goes back.
 
 | Place | What it's for |
 | --- | --- |

@@ -15,6 +15,7 @@
   let bootPhase = 1;
   let bootTimer = 0;
   let pendingCmd = "";
+  let lastThread = "beacon";
 
   const GLOSS = [
     ["IP address", "The number of one computer on a network. Example: 192.0.2.40. That range is for labs, not the real internet."],
@@ -153,6 +154,23 @@
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
+  function wantLite() {
+    if (reducedMotion()) return true;
+    if (window.matchMedia && window.matchMedia("(max-width: 800px)").matches) return true;
+    const conn = navigator.connection;
+    if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ""))) return true;
+    if (typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 4) return true;
+    return false;
+  }
+
+  function isToolView(name) {
+    return ["terminal", "mail", "letter", "browser", "files", "doc"].indexOf(name) !== -1;
+  }
+
+  function useSplit() {
+    return !!(window.matchMedia && window.matchMedia("(min-width: 1180px)").matches && isToolView(view().name));
+  }
+
   function soundOn() {
     return !!(Game.state && Game.state.settings && Game.state.settings.sound);
   }
@@ -223,9 +241,24 @@
           onClick: function (event) {
             event.preventDefault();
             event.stopPropagation();
-            const open = event.currentTarget.querySelector(".jargontip");
-            if (open) open.remove();
-            else event.currentTarget.append(h("span", { class: "jargontip" }, def));
+            const already = document.querySelector(".jargontip");
+            document.querySelectorAll(".jargontip").forEach(function (node) { node.remove(); });
+            if (already && already.getAttribute("data-word") === word) return;
+            const tip = h("span", { class: "jargontip", "data-word": word }, def);
+            document.body.append(tip);
+            const rect = event.currentTarget.getBoundingClientRect();
+            const width = Math.min(260, window.innerWidth - 24);
+            let left = rect.left;
+            if (left + width > window.innerWidth - 12) left = window.innerWidth - 12 - width;
+            if (left < 12) left = 12;
+            let top = rect.bottom + 8;
+            tip.style.width = width + "px";
+            tip.style.left = left + "px";
+            tip.style.top = top + "px";
+            const tipRect = tip.getBoundingClientRect();
+            if (tipRect.bottom > window.innerHeight - 8) {
+              tip.style.top = Math.max(8, rect.top - tipRect.height - 8) + "px";
+            }
           }
         }, word));
       }
@@ -283,7 +316,10 @@
     else stack.push(next);
     if (stack.length > 16) stack.splice(1, stack.length - 16);
     if (name === "home" || name === "jobs" || name === "messages") Game.clearReview();
-    if (name === "thread") Game.look(next.thread || "beacon");
+    if (name === "thread") {
+      lastThread = next.thread || "beacon";
+      Game.look(lastThread);
+    }
     remember();
     navigated = true;
     refresh();
@@ -298,14 +334,24 @@
   }
 
   function snapshot() {
-    const sc = screenEl.querySelector(".scroll");
+    const term = screenEl.querySelector(".termscroll");
+    const sc = screenEl.querySelector(".chat") || screenEl.querySelector(".scroll");
     const fields = [];
     screenEl.querySelectorAll("[data-keep]").forEach(function (el) {
       fields.push({ id: el.id, value: el.value, checked: el.checked, start: el.selectionStart });
     });
     const focus = document.activeElement && document.activeElement.id;
     const stick = !sc || (sc.scrollHeight - sc.scrollTop - sc.clientHeight < 90);
-    return { fields: fields, scroll: sc ? sc.scrollTop : 0, stick: stick, focus: focus, key: viewKey() };
+    const termStick = !term || (term.scrollHeight - term.scrollTop - term.clientHeight < 90);
+    return {
+      fields: fields,
+      scroll: sc ? sc.scrollTop : 0,
+      stick: stick,
+      termScroll: term ? term.scrollTop : 0,
+      termStick: termStick,
+      focus: focus,
+      key: viewKey()
+    };
   }
 
   function restore(shot, jumped) {
@@ -320,19 +366,23 @@
         try { if (typeof f.start === "number") el.setSelectionRange(f.start, f.start); } catch (err) { /* date inputs */ }
       }
     });
-    const sc = screenEl.querySelector(".scroll");
+    const sc = screenEl.querySelector(".chat") || screenEl.querySelector(".scroll");
     if (sc) {
-      const follow = view().name === "thread" || view().name === "terminal";
+      const follow = view().name === "thread" || view().name === "terminal" || useSplit();
       if (!jumped && shot.key === viewKey()) sc.scrollTop = shot.stick ? sc.scrollHeight : shot.scroll;
       else sc.scrollTop = follow ? sc.scrollHeight : 0;
     }
+    const term = screenEl.querySelector(".termscroll");
+    if (term) term.scrollTop = (!jumped && !shot.termStick) ? shot.termScroll : term.scrollHeight;
     if (shot.focus && document.getElementById(shot.focus)) document.getElementById(shot.focus).focus();
   }
 
   function refresh() {
     if (!ready) return;
     const shot = snapshot();
-    if (view().name === "thread" && !(Game.state && Game.state.reviewing)) Game.look(view().thread || "beacon");
+    document.querySelectorAll(".jargontip").forEach(function (node) { node.remove(); });
+    const watching = view().name === "thread" ? (view().thread || "beacon") : (useSplit() ? lastThread : null);
+    if (watching && !(Game.state && Game.state.reviewing)) Game.look(watching);
     else NightAudit.lookingAt = null;
     const jumped = navigated;
     navigated = false;
@@ -351,6 +401,9 @@
         input.focus();
       }
       pendingCmd = "";
+    } else if (jumped && view().name === "terminal") {
+      const input = document.getElementById("term-in");
+      if (input) input.focus();
     }
   }
 
@@ -368,7 +421,8 @@
       if (modal) gate.append(modalBox());
       return gate;
     }
-    const root = h("div", { class: "workspace" + (sidebarOpen ? " nav-open" : "") });
+    const split = useSplit();
+    const root = h("div", { class: "workspace" + (sidebarOpen ? " nav-open" : "") + (split ? " desk-split" : "") });
     root.append(sidebar());
     const main = h("div", { class: "workspace-main" });
     main.append(workspaceHead());
@@ -376,7 +430,17 @@
     if (note) main.append(note);
     if (showTabs()) main.append(tabBar());
     if (showObjective()) main.append(objectiveBar());
-    main.append(body());
+    if (split) {
+      const stage = h("div", { class: "stage" });
+      const chat = h("section", { class: "pane chatpane", "aria-label": "Chat" });
+      chat.append(threadView({ embedded: true, thread: lastThread }));
+      const tool = h("section", { class: "pane toolpane", "aria-label": paneTitle() });
+      tool.append(body());
+      stage.append(chat, tool);
+      main.append(stage);
+    } else {
+      main.append(body());
+    }
     root.append(main);
     if (sidebarOpen) {
       root.append(h("button", { class: "scrim", "aria-label": "Close channels", onClick: function () { sidebarOpen = false; refresh(); } }));
@@ -503,9 +567,11 @@
       if (id === "files") return name === "files" || name === "doc";
       return name === id;
     }
-    return h("nav", { class: "tabs" }, tabs.map(function (tab) {
+    const keys = { chat: "1", terminal: "2", mail: "3", browser: "4", files: "5" };
+    return h("nav", { class: "tabs", "aria-label": "Tools" }, tabs.map(function (tab) {
       return h("button", {
         class: active(tab[0]) ? "on" : "",
+        title: tab[1] + " · key " + keys[tab[0]],
         onClick: function () {
           closeNav();
           if (tab[0] === "chat") {
@@ -568,10 +634,12 @@
     );
   }
 
-  function topbar() {
-    if (stack.length <= 1) return h("span");
-    return h("div", { class: "backrow" },
-      h("button", { class: "textbtn", onClick: back }, "← Back")
+  function topbar(title) {
+    const tool = isToolView(view().name);
+    if (stack.length <= 1 && !tool) return h("span");
+    return h("div", { class: "backrow" + (tool ? " sheetbar" : "") },
+      h("button", { class: "textbtn closebtn", onClick: back }, tool ? "← Chat" : "← Back"),
+      tool ? h("strong", { class: "sheet-title" }, title || paneTitle()) : null
     );
   }
 
@@ -755,13 +823,14 @@
     return wrap;
   }
 
-  function threadView() {
-    const thread = view().thread || "beacon";
+  function threadView(opts) {
+    opts = opts || {};
+    const thread = opts.thread || view().thread || lastThread || "beacon";
     const run = Game.viewingRun();
     const active = Game.activeRun();
     const reviewing = Game.state.reviewing;
-    const wrap = h("div", { class: "view" });
-    wrap.append(topbar(thread === "pix" ? "PIX" : "Beacon Cell"));
+    const wrap = h("div", { class: "view" + (opts.embedded ? " embedded" : "") });
+    if (!opts.embedded) wrap.append(topbar(thread === "pix" ? "PIX" : "Beacon Cell"));
     if (reviewing) {
       wrap.append(h("div", { class: "banner" }, "Filed chapter. Read only."));
     }
@@ -915,7 +984,9 @@
       autocomplete: "off",
       spellcheck: "false",
       "aria-label": "Command",
-      placeholder: run.term.mode === "pass" ? "passphrase" : "help"
+      placeholder: run.term.mode === "pass" ? "passphrase" : "help",
+      enterkeyhint: "send",
+      inputmode: "text"
     });
     input.addEventListener("keydown", function (event) {
       const history = run.term.history || [];
@@ -938,7 +1009,7 @@
         Game.termExec(value);
       }
     }, input, h("button", { class: "btn", type: "submit" }, "Run"));
-    wrap.append(sc, form);
+    wrap.append(sc, form, h("p", { class: "keys" }, "Keys: 1 chat · 2 terminal · 3 mail · 4 browser · 5 files · Esc back"));
     return wrap;
   }
 
@@ -1422,7 +1493,31 @@
   }
 
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && stack.length > 1 && !modal) back();
+    const typing = event.target && /^(INPUT|TEXTAREA)$/.test(event.target.tagName);
+    if (event.key === "Escape") {
+      if (modal) { modal = null; refresh(); return; }
+      if (sidebarOpen) { sidebarOpen = false; refresh(); return; }
+      if (document.querySelector(".jargontip")) {
+        document.querySelectorAll(".jargontip").forEach(function (node) { node.remove(); });
+        return;
+      }
+      if (typing) { event.target.blur(); return; }
+      if (stack.length > 1) back();
+      return;
+    }
+    if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (!Game.state || !Game.state.player) return;
+    if (view().name === "boot" || view().name === "ident") return;
+    const jump = { "1": "chat", "2": "terminal", "3": "mail", "4": "browser", "5": "files" };
+    if (!jump[event.key]) return;
+    event.preventDefault();
+    if (jump[event.key] === "chat") go("thread", { thread: lastThread || "beacon" });
+    else go(jump[event.key]);
+  });
+
+  document.addEventListener("click", function (event) {
+    if (event.target && event.target.closest && event.target.closest(".jargon")) return;
+    document.querySelectorAll(".jargontip").forEach(function (node) { node.remove(); });
   });
 
   setInterval(function () {
@@ -1446,7 +1541,7 @@
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const reduce = reducedMotion();
+    const reduce = reducedMotion() || wantLite();
     let drops = [];
     let lights = [];
     let running = true;
@@ -1454,7 +1549,7 @@
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       drops = [];
-      const count = Math.min(70, Math.max(24, Math.floor(canvas.width / 22)));
+      const count = reduce ? Math.min(16, Math.floor(canvas.width / 48)) : Math.min(70, Math.max(24, Math.floor(canvas.width / 22)));
       for (let i = 0; i < count; i++) {
         drops.push({
           x: Math.random() * canvas.width,
@@ -1464,7 +1559,7 @@
         });
       }
       lights = [];
-      const glowCount = Math.min(28, Math.floor(canvas.width / 40));
+      const glowCount = reduce ? 6 : Math.min(28, Math.floor(canvas.width / 40));
       for (let i = 0; i < glowCount; i++) {
         lights.push({
           x: Math.random() * canvas.width,
@@ -1475,7 +1570,10 @@
       }
     }
     function frame(t) {
-      if (!running) return;
+      if (!running || document.hidden) return;
+      if (document.documentElement.classList.contains("lite")) {
+        running = false;
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "rgba(61, 255, 232, 0.06)";
       ctx.lineWidth = 1;
@@ -1521,7 +1619,7 @@
         running = false;
         return;
       }
-      if (!running && !reduce) {
+      if (!running && !reduce && !document.documentElement.classList.contains("lite")) {
         running = true;
         requestAnimationFrame(frame);
       }
@@ -1530,6 +1628,31 @@
     else requestAnimationFrame(frame);
   }
 
+  function bindViewport() {
+    function apply() {
+      const vv = window.visualViewport;
+      const height = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty("--vvh", height + "px");
+      document.documentElement.classList.toggle("lite", wantLite());
+      document.documentElement.classList.toggle("paused", document.hidden);
+    }
+    apply();
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", apply);
+      window.visualViewport.addEventListener("scroll", apply);
+    }
+    let wide = window.matchMedia("(min-width: 1180px)").matches;
+    window.addEventListener("resize", function () {
+      apply();
+      const next = window.matchMedia("(min-width: 1180px)").matches;
+      if (next !== wide) {
+        wide = next;
+        if (ready) refresh();
+      }
+    });
+  }
+
+  bindViewport();
   startCity();
 
   Game.onChange = onGame;
