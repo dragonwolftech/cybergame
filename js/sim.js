@@ -350,6 +350,7 @@
     const tools = (lab.term && lab.term.tools) || {};
     const lines = [
       "help                 this list",
+      "whoami               print the lab username",
       "ls [path]            list a directory. ls -l shows bits",
       "cd [path]            change directory. cd ~ goes home",
       "cat <file>           read a file",
@@ -445,6 +446,9 @@
       helpLines(lab).forEach(function (ln) { pushLine(s, ln, "dim"); });
     } else if (cmd === "clear") {
       s.lines = [];
+    } else if (cmd === "whoami") {
+      pushLine(s, promptUser, "ok");
+      pushLine(s, "This is the lab username on this pretend computer. It is not a password.", "dim");
     } else if (cmd === "pwd") {
       pushLine(s, s.cwd);
     } else if (cmd === "exit") {
@@ -723,6 +727,12 @@
         /* scan sets a goal, not a flag. Check incoming goals union previous via a flag set here. */
       }
     }
+
+    const typed = line.trim().replace(/\s+/g, " ");
+    (term.basicGoals || []).forEach(function (rule) {
+      const hit = rule.exact ? typed === rule.cmd : cmd === rule.cmd;
+      if (hit) goals.push(rule.goal);
+    });
 
     if (goals.indexOf("saw-scan") !== -1) s.flags["saw-scan"] = true;
 

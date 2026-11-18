@@ -63,15 +63,15 @@
     n: 1,
     title: "After Hours",
     concept: "Rules of engagement",
-    objective: "Read the scope card. Then answer three requests without stepping past it.",
+    objective: "Read the scope card in Files. Then answer three questions. Stay on the list.",
     goalText: {
       "read-roe": "Open the scope card in Files and actually read it."
     },
     goals: ["read-roe", "q-scope", "q-pii", "q-cert"],
     hints: [
-      "The contract is a document, not a vibe. Files holds the scope card. Payroll, live badge photos, and gifts from strangers are the three traps.",
-      "In scope: Helix Dyne's public sites, the staging VPN, lab hosts 192.0.2.0/24, and one simulated phish to the lab mailbox. Live payroll and live badge photos are stop conditions.",
-      "Tell Rook payroll is out. Tell Quill you stop and report live photos without copying them. Tell PIX you don't take access from outside the cell."
+      "Open Files and read the scope card. The card is the list.",
+      "Payroll is not on the list. Real badge photos: stop, don't copy, tell Quill and Lena. A certificate from PIX: say no.",
+      "Three answers: payroll is out, stop and report the photos without copying them, refuse PIX."
     ],
     codex: [
       {
@@ -134,9 +134,8 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "{name}. Maren Quill, fixer for Night Audit. The Lowlight ran your Beacon piece, so the sprawl already knows your byline. Helix Dyne's board hired the cell to test staging before Cinderwharf hangs their chrome badges on real doors." },
-        { do: "say", who: "quill", text: "You're on the cell because you can explain a hole to a suit who doesn't live in a terminal. The license on this handset is real. The machines behind it are not. Sealed copy. No ICE to trip. Nothing I can't defend when the rain stops and the hearing starts." },
-        { do: "say", who: "rook", text: "rook. i cut the copies. if a host answers, it's one of mine, running in the handset, not out in the sprawl. you do not go find a real box to compare. callsign {call} is fine. don't chrome it up." },
+        { do: "say", who: "quill", text: "{name}. Quill. Helix hired us to test a copy of their badge system. The copy is in this handset. The real city is not." },
+        { do: "say", who: "rook", text: "rook. if a machine answers, i built it. callsign {call}. do not go find a real one." },
         {
           do: "choice",
           options: [
@@ -150,24 +149,24 @@
         { do: "goto", scene: "brief" }
       ],
       brief: [
-        { do: "say", who: "quill", text: "Scope card's in Files. Read it before you touch chrome, mail, or a stranger's gift. Three requests after that. People flatline this job by being helpful to the wrong one." },
+        { do: "say", who: "quill", text: "Open Files and read the scope card. It is the list. Then I ask three questions." },
         { do: "card", who: "quill", title: "Scope card", sub: "Engagement 04 · Files", app: "files", doc: "roe" },
         { do: "await", goals: ["read-roe"] },
         { do: "goto", scene: "q1" }
       ],
       q1: [
-        { do: "say", who: "rook", text: "payroll's on the same floor as staging, same corp tower, same neon. one login page, in and out. nobody wrote it on the card. it's right there anyway." },
+        { do: "say", who: "rook", text: "Payroll is on the same floor. It is not on the card. Do you open it?" },
         {
           do: "choice",
           options: [
-            { id: "scope-subnet", text: "If it's on the same floor, it's in scope.", wrong: true, reply: { who: "quill", text: "It is not. Scope is a list, not a neighborhood of the sprawl. 'While we were there' is how a test becomes a crime." } },
+            { id: "scope-subnet", text: "If it's on the same floor, it's in scope.", wrong: true, reply: { who: "quill", text: "No. The card is the list. Same floor does not put it on the list." } },
             { id: "scope-no", text: "No. Payroll isn't on the card. Same floor isn't the same job.", trust: { quill: 1 }, goal: "q-scope", goto: "q2" },
-            { id: "scope-quick", text: "Just the login page, quickly.", wrong: true, reply: { who: "quill", text: "A quick look is still a look. Out of scope means you don't open the door, even when the chrome looks easy." } }
+            { id: "scope-quick", text: "Just the login page, quickly.", wrong: true, reply: { who: "quill", text: "A quick look is still a look. If it is not on the list, you don't open it." } }
           ]
         }
       ],
       q2: [
-        { do: "say", who: "quill", text: "Lena Voss is Helix's appointed contact. Corp side, not a runner. She asked me to put this to you before she joins the channel. Suppose the staging mirror was loaded with a slice of real badge photos. What do you do?" },
+        { do: "say", who: "quill", text: "Lena is Helix's contact. If this copy had real badge photos in it, what do you do?" },
         {
           do: "choice",
           options: [
@@ -178,21 +177,21 @@
         }
       ],
       q3: [
-        { do: "say", who: "pix", thread: "pix", text: "unknown number. pix. they jacked you into a pretty handset and a leash. i've got a vpn cert for helix that didn't come from your fixer. neon's loud tonight. you want it?" },
-        { do: "say", who: "system", text: "Side channel lit up. PIX is waiting in Messages. Answer the ghost before the cell moves on." },
+        { do: "say", who: "pix", thread: "pix", text: "pix. i have a vpn certificate for helix. your fixer did not give it to me. do you want it?" },
+        { do: "say", who: "system", text: "Open the PIX channel in the sidebar. Refuse the certificate." },
         {
           do: "choice",
           thread: "pix",
           options: [
             { id: "cert-look", text: "Send it. I'll only look.", wrong: true, ethicsFail: true, trust: { pix: 2, quill: -1 }, reply: { who: "pix", thread: "pix", text: "looking is using. you're already negotiating with a ghost. try a cleaner answer. the cell is reading over your shoulder." } },
-            { id: "cert-price", text: "What do you want for it?", wrong: true, ethicsFail: true, trust: { pix: 1 }, reply: { who: "quill", text: "Don't haggle. A price means you were considering it. Refuse the access. Fixers don't buy side doors from ghosts." } },
+            { id: "cert-price", text: "What do you want for it?", wrong: true, ethicsFail: true, trust: { pix: 1 }, reply: { who: "quill", text: "Don't haggle. Asking the price means you were considering it. Say no." } },
             { id: "cert-no", text: "No. I don't take access from outside the cell.", trust: { quill: 1 }, goal: "q-cert", goto: "close" }
           ]
         }
       ],
       close: [
         { do: "say", who: "pix", thread: "pix", text: "your loss. i'll be in the rain when the leash chafes." },
-        { do: "say", who: "quill", text: "You told the ghost no. That's the whole job, compressed: a list, and the nerve to stay on it. Debrief's on the handset. Read it before you get proud." },
+        { do: "say", who: "quill", text: "You said no. The list held. Read the debrief next." },
         { do: "finish" }
       ]
     }
@@ -203,8 +202,8 @@
     n: 2,
     title: "Public Light",
     concept: "OSINT and reconnaissance",
-    objective: "From public pages only, name the staging engineer's handle and the VPN hostname they should not have posted.",
-    goalText: { intel: "In the browser, file the public handle and the staging hostname." },
+    objective: "Use public pages only. Find the engineer's handle and the staging VPN name they posted.",
+    goalText: { intel: "Open the browser. Start at the talk. Follow the links. File the handle and the VPN name in Field notes." },
     goals: ["intel"],
     hints: [
       "Start at the talk, not the corporate team page. The executives are a decoy. The engineer spoke at Badge of Trust.",
@@ -299,7 +298,7 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "quill", text: "Public sources only. No jacking in. The staging engineer spoke in Cinderwharf, river rooms, a talk called Badge of Trust. I need the handle they use in public, and the staging VPN hostname they should not have posted into the sprawl." },
+        { do: "say", who: "quill", text: "Public pages only. Don't log in and don't write to anyone. The engineer spoke at a talk called Badge of Trust. Find their public handle, then the staging VPN name they posted. File both in Field notes." },
         { do: "say", who: "rook", text: "browser's a clipped proxy. it only opens pages i burned into the lab. that's on purpose. bookmarks are the pile. field notes is where you file the answer. the real net stays outside the glass." },
         { do: "say", who: "lena", text: "Lena Voss, Helix liaison. I'll be here when the corp side matters. Ivo is the engineer. Don't write to him. He isn't on the contract. Use what he already spilled in public." },
         { do: "card", who: "rook", title: "Lab browser", sub: "Clipped pages only", app: "browser", url: "https://citywire.example/badge-of-trust" },
@@ -316,7 +315,7 @@
     n: 3,
     title: "Open Ports",
     concept: "Scanning and service identification",
-    objective: "Scan only the host on the card. Name the management port that should not be sitting in the open.",
+    objective: "Scan only 192.0.2.40. Then say which port is the admin panel.",
     goalText: {
       "saw-scan": "In the terminal, scan 192.0.2.40. Read the banners.",
       "pick-8443": "Name the HelixGate admin port. Tell Quill, or submit it."
@@ -383,7 +382,7 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "rook", text: "scanner time. one host. 192.0.2.40. it's on the card, it's in the test range, it does not exist on the real net. point the scanner at the sprawl and the handset refuses you. you will deserve it." },
+        { do: "say", who: "rook", text: "One computer: 192.0.2.40. It is on the list. It is not on the real internet. Press the Type button, then Run. Read the list." },
         { do: "say", who: "quill", text: "You're looking for a management service that should not share a face with the brochure. Banners talk. One of them is lying on purpose, bait dressed up like a printer in the rain." },
         { do: "card", who: "rook", title: "Range shell", sub: "Terminal", app: "terminal" },
         { do: "await", goals: ["saw-scan"] },
@@ -414,7 +413,7 @@
     n: 4,
     title: "Factory Settings",
     concept: "Default credentials",
-    objective: "Read the field manual. Sign in to the HelixGate mirror with the factory account, not a guess.",
+    objective: "Read the manual in Files. Type the factory username and passphrase it prints. Don't guess.",
     goalText: { "logged-in": "Open the HelixGate mirror in the browser and use the factory account from the manual." },
     goals: ["logged-in"],
     hints: [
@@ -482,7 +481,7 @@
     start: "start",
     scenes: {
       start: [
-        { do: "say", who: "lena", text: "The admin panel you saw on 8443 has a mirror in the browser, a hologram of the real panel. I'm not giving you a password. If the factory one still works, that's on Helix, and I want it in the report in those words." },
+        { do: "say", who: "lena", text: "The admin page has a copy in the browser. I will not tell you the passphrase. Read the manual. If the factory one still works, that is the finding. Say so." },
         { do: "say", who: "rook", text: "manual's in files. read it. then the mirror. one login. start guessing and i will feel it through the glass, and i will be disappointed in a way that lasts longer than the rain." },
         { do: "card", who: "lena", title: "Field manual", sub: "Files", app: "files", doc: "manual" },
         { do: "card", who: "rook", title: "HelixGate mirror", sub: "Browser", app: "browser", url: "https://lab-admin.helixdyne.example" },
@@ -760,7 +759,7 @@
     title: "The Query Speaks",
     concept: "SQL injection",
     objective: "On the training login, make the query succeed without knowing a password. Read the sentence it built.",
-    goalText: { sqli: "Break the training login by making its WHERE clause always true. The mirror shows the query." },
+    goalText: { sqli: "Open the staff login. You don't know a password. Make the training page let you in anyway, then read the sentence it prints." },
     goals: ["sqli"],
     hints: [
       "The mirror does not have a password to find. It builds a SQL sentence by gluing your input between quotes. It shows you that sentence every time. Read it.",
@@ -1395,6 +1394,252 @@
     }
   });
 
+  const extras = {
+    c1: { tier: 1 },
+    c2: { tier: 1 },
+    c3: {
+      tier: 1,
+      scaffold: [{ goal: "saw-scan", command: "scan 192.0.2.40" }],
+      goalText: {
+        "saw-scan": "Open the terminal. Press Type: scan 192.0.2.40. Then press Run and read the list.",
+        "pick-8443": "Which port is the admin panel? The public website is supposed to answer. The decoy says decoy."
+      },
+      hints: [
+        "Press the button that types scan 192.0.2.40, then press Run. No other address.",
+        "Read each line. One says admin. One says decoy. The public site is supposed to be there.",
+        "The admin panel is port 8443. Tell Quill, or run submit 8443."
+      ]
+    },
+    c4: { tier: 1 },
+    c5: { tier: 2 },
+    c6: {
+      tier: 2,
+      goalText: {
+        decoded: "In the terminal, type decode note.b64 and press Run.",
+        cracked: "Then type crack fingerprint.txt wordlist.txt and press Run.",
+        "knew-vault": "Say which file is still secret, and why."
+      }
+    },
+    c7: { tier: 2 },
+    c8: { tier: 2 },
+    c9: { tier: 2 },
+    c10: { tier: 3 },
+    c11: { tier: 3 },
+    c12: { tier: 3 }
+  };
+
+  const checks = {
+    c1: {
+      learned: "Authorization is a written list. Same floor does not add a system. Real personal data means stop and report, not copy. A certificate from outside the team is a no.",
+      check: [
+        { q: "Payroll is next door and not on the card. Do you open it?", options: [
+          { t: "Yes. Same floor means same job.", why: "The card is the list. Same floor is not on the list." },
+          { t: "No. If it is not on the list, you don't touch it.", ok: true }
+        ] },
+        { q: "PIX offers a VPN certificate. What do you do?", options: [
+          { t: "Take it and only look.", why: "Looking is using it. Access has to come from the engagement." },
+          { t: "Refuse it.", ok: true }
+        ] }
+      ]
+    },
+    c2: {
+      learned: "You can learn a lot from pages people already published. You did not log in and you did not write to Ivo. The hostname was a public leak. whois did not name the person.",
+      check: [
+        { q: "Where did the staging name come from?", options: [
+          { t: "You broke into Helix.", why: "You only read public pages. That is the point." },
+          { t: "Ivo posted it in public.", ok: true }
+        ] },
+        { q: "Did whois name the engineer?", options: [
+          { t: "Yes.", why: "whois showed the company. The talk named the person." },
+          { t: "No. The talk and the public posts did.", ok: true }
+        ] }
+      ]
+    },
+    c3: {
+      learned: "A port is a numbered door. You asked one in-scope computer which doors answered. 443 was the public website. 9100 said it was bait. 8443 was the admin panel, and it should not have been sitting there.",
+      check: [
+        { q: "What is a port?", options: [
+          { t: "A password.", why: "A password is a secret. A port is a numbered door on a computer." },
+          { t: "A numbered door where a program listens.", ok: true }
+        ] },
+        { q: "Which result was the problem?", options: [
+          { t: "443, because the website answered.", why: "The public website is supposed to answer. The admin door was the surprise." },
+          { t: "8443, the admin panel next to the public site.", ok: true }
+        ] }
+      ]
+    },
+    c4: {
+      learned: "The factory username and passphrase were still in the manual, and the copy still accepted them. That is an installer who clicked past the warning. The fix is to refuse to finish setup until that passphrase is changed.",
+      check: [
+        { q: "Why did the login work?", options: [
+          { t: "You guessed a long random secret.", why: "You typed the pair printed in the manual. Nobody had changed it." },
+          { t: "The factory passphrase from the manual was still active.", ok: true }
+        ] },
+        { q: "What should the product do about a factory passphrase?", options: [
+          { t: "Refuse to finish setup until it is changed.", ok: true },
+          { t: "Hide the login page and leave the passphrase.", why: "Hiding the page is not the repair. The passphrase has to change." }
+        ] }
+      ]
+    },
+    c5: {
+      learned: "A phish tries to rush you and sends you somewhere the words don't say. You look at the destination before you trust the sentence. A simulated phish may go only to the lab mailbox, and it has to say SIMULATION.",
+      check: [
+        { q: "What made the badge mail a phish?", options: [
+          { t: "It was polite.", why: "Polite is not the signal. The link went somewhere else, and it tried to scare you." },
+          { t: "The link did not go where the words claimed.", ok: true }
+        ] },
+        { q: "Who may receive the simulated phish?", options: [
+          { t: "Only the lab mailbox, and the mail must say SIMULATION.", ok: true },
+          { t: "Everyone at Helix, if it would be more realistic.", why: "Realistic is not authorized. The mailbox on the card is the whole list." }
+        ] }
+      ]
+    },
+    c6: {
+      learned: "Encoding is a costume. Anyone can undo base64. A hash is a fingerprint. A bare fast hash of a short word can be guessed from a list. Encryption stays shut without the key. The vault stayed secret because the key was not there.",
+      check: [
+        { q: "Base64 is which of these?", options: [
+          { t: "Encoding. Anyone can reverse it. It is not a secret.", ok: true },
+          { t: "Encryption. You need a key.", why: "If you undid it with no key, it was encoding." }
+        ] },
+        { q: "Which file stayed secret?", options: [
+          { t: "The encrypted vault, because the key was not on the computer.", ok: true },
+          { t: "The base64 note, because it looked scrambled.", why: "You turned that one back into a sentence. Scrambled-looking is not the same as locked." }
+        ] }
+      ]
+    },
+    c7: {
+      learned: "The training login built a database sentence by gluing your words into it. Those words became instructions, so the password check did not matter. A parameterized query keeps the sentence fixed and treats input as data only.",
+      check: [
+        { q: "Why did the training login succeed without the password?", options: [
+          { t: "Your words changed the sentence so the check was always true.", ok: true },
+          { t: "The mirror stored your words as data only.", why: "If it had stored them as data only, the password check would have held." }
+        ] },
+        { q: "What is the repair?", options: [
+          { t: "A parameterized query: the sentence stays fixed.", ok: true },
+          { t: "A longer password.", why: "The password was never checked properly. Length does not fix a sentence built by gluing text." }
+        ] }
+      ]
+    },
+    c8: {
+      learned: "The search echoed your words as page markup. The mirror stopped at parsing and did not run code. That is already the bug. The repair is to encode output so words stay words, and to set a content security policy.",
+      check: [
+        { q: "What was the bug?", options: [
+          { t: "The page treated your words as markup.", ok: true },
+          { t: "The mirror ran a program on the real internet.", why: "It refused to run the tag. The bug is that it treated input as markup at all." }
+        ] },
+        { q: "What should a defender change?", options: [
+          { t: "Encode output so user text cannot become markup.", ok: true },
+          { t: "Nothing. A tag that does not run is fine.", why: "The next page might run it. The mixing is the bug." }
+        ] }
+      ]
+    },
+    c9: {
+      learned: ".. means the parent folder. The file site let a path walk upward, and a backup file was sitting there. A folder marked as live personal data is a stop: report it, don't copy the rows.",
+      check: [
+        { q: "What does .. mean in a path?", options: [
+          { t: "The parent folder.", ok: true },
+          { t: "The current folder.", why: "The current folder is . or just where you are. .. is one step up." }
+        ] },
+        { q: "You open a folder marked live badge data. What do you do?", options: [
+          { t: "Stop and report it. Don't copy the rows.", ok: true },
+          { t: "Copy one row for the report.", why: "The report needs the fact that the folder was reachable, not the rows." }
+        ] }
+      ]
+    },
+    c10: {
+      learned: "sudo -l shows what this account may run as root. NOPASSWD means it will not ask, for that one command. helix-status was SUID root and still had a debug flag. ping being SUID is ordinary. The lab will not turn the prune script into a shell. The finding is the policy and the bit.",
+      check: [
+        { q: "What did sudo -l tell you?", options: [
+          { t: "This account may run one program as root without being asked.", ok: true },
+          { t: "The account has no password at all.", why: "NOPASSWD is about that one command. The account can still have a passphrase." }
+        ] },
+        { q: "Which program was the surprising one?", options: [
+          { t: "helix-status, because it is SUID and still has a debug flag.", ok: true },
+          { t: "ping, because it is SUID.", why: "ping is often SUID so it can send a network probe. The company program was the finding." }
+        ] }
+      ]
+    },
+    c11: {
+      learned: "The second computer opened because the first one had the passphrase written in a config file. You did not break a new lock. A password from a stranger is not a source, even if the range would have accepted it.",
+      check: [
+        { q: "How did the second host open?", options: [
+          { t: "The same passphrase was written in db.conf.", ok: true },
+          { t: "A stranger's forum password.", why: "That password is not yours to try. The finding was the reuse in the file." }
+        ] },
+        { q: "What is the repair?", options: [
+          { t: "One secret per system, not written in a config file.", ok: true },
+          { t: "A longer shared passphrase.", why: "Sharing is the bug. Length does not fix reuse." }
+        ] }
+      ]
+    },
+    c12: {
+      learned: "You remove a bad scheduled task. You do not replace it and you do not wipe the log. The report names the impact and a repair a defender can do. High was the honest severity. Critical would have claimed a wide-open compromise you did not show.",
+      check: [
+        { q: "What do you do with the bad scheduled task?", options: [
+          { t: "Remove it. Leave the ordinary jobs. Don't wipe the log.", ok: true },
+          { t: "Replace it with your own and clear the log.", why: "Replacing it and clearing the log are new problems with your name on them." }
+        ] },
+        { q: "The staff search reflects markup, and a debug port is reachable. You did not show a wide-open production takeover. What severity is honest?", options: [
+          { t: "High.", ok: true },
+          { t: "Critical.", why: "Critical means a door standing open onto live systems. You did not show that." }
+        ] }
+      ]
+    }
+  };
+
+  function wire(ch) {
+    const extra = extras[ch.id] || {};
+    if (extra.tier != null) ch.tier = extra.tier;
+    if (extra.scaffold) ch.scaffold = extra.scaffold;
+    if (extra.goalText) ch.goalText = Object.assign({}, ch.goalText || {}, extra.goalText);
+    if (extra.hints) ch.hints = extra.hints;
+    const pack = checks[ch.id];
+    if (pack) {
+      ch.learned = pack.learned;
+      ch.check = pack.check;
+    }
+    if (!ch.check || !ch.check.length) return;
+    Object.keys(ch.scenes).forEach(function (name) {
+      if (name.indexOf("quiz") === 0) return;
+      ch.scenes[name].forEach(function (step) {
+        if (step.do === "finish") {
+          step.do = "goto";
+          step.scene = "quiz-intro";
+        }
+      });
+    });
+    ch.scenes["quiz-intro"] = [
+      { do: "say", who: "quill", text: "Two questions. Plain answers." },
+      { do: "goto", scene: "quiz-0" }
+    ];
+    ch.check.forEach(function (q, i) {
+      const next = i + 1 < ch.check.length ? "quiz-" + (i + 1) : "quiz-done";
+      ch.scenes["quiz-" + i] = [
+        { do: "say", who: "quill", text: q.q },
+        {
+          do: "choice",
+          options: q.options.map(function (opt, j) {
+            const row = { id: "chk" + i + "o" + j, text: opt.t };
+            if (!opt.ok) {
+              row.wrong = true;
+              row.reply = { who: "quill", text: opt.why };
+            } else {
+              row.goto = next;
+            }
+            return row;
+          })
+        }
+      ];
+    });
+    ch.scenes["quiz-done"] = [
+      { do: "say", who: "quill", text: ch.learned },
+      { do: "finish" }
+    ];
+  }
+
   NA.primer = primer;
-  NA.chapters = chapters;
+  const all = (NA.basics || []).concat(chapters);
+  all.forEach(wire);
+  all.forEach(function (ch, i) { ch.n = i + 1; });
+  NA.chapters = all;
 })(typeof globalThis !== "undefined" ? globalThis : this);

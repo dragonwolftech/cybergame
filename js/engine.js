@@ -3,7 +3,8 @@
   "use strict";
 
   const NA = root.NightAudit;
-  const KEY = "night-audit-v1";
+  const KEY = "night-audit-v2";
+  const OLD_KEY = "night-audit-v1";
   const memoryStore = {};
   const db = (typeof localStorage !== "undefined")
     ? localStorage
@@ -13,14 +14,22 @@
       removeItem: function (k) { delete memoryStore[k]; }
     };
 
-  const RANKS = [
-    { min: 0, name: "Script Kiddie" },
-    { min: 280, name: "Stringer" },
-    { min: 560, name: "Operator" },
-    { min: 840, name: "Night Wire" },
-    { min: 1080, name: "Red Cell" },
-    { min: 1200, name: "Ghost" }
-  ];
+  function rankRows() {
+    const chapters = NA.chapters || [];
+    const counts = [0, 0, 0, 0];
+    chapters.forEach(function (ch) { counts[ch.tier || 0] += 1; });
+    let upto = 0;
+    const ends = counts.map(function (n) { upto += n * 100; return upto; });
+    const top = ends[3] || upto || 100;
+    return [
+      { min: 0, name: "Script Kiddie" },
+      { min: Math.max(80, (ends[0] || 0) - 40), name: "Stringer" },
+      { min: Math.max(160, (ends[1] || 0) - 40), name: "Operator" },
+      { min: Math.max(240, (ends[2] || 0) - 40), name: "Night Wire" },
+      { min: Math.max(320, top - 220), name: "Red Cell" },
+      { min: Math.max(400, top - 30), name: "Ghost" }
+    ];
+  }
 
   let state = null;
   let timer = null;
@@ -30,7 +39,8 @@
 
   function freshState() {
     return {
-      v: 1,
+      v: 2,
+      notice: null,
       player: null,
       settings: { fast: false, sound: false },
       trust: { quill: 0, rook: 0, lena: 0, pix: 0 },
@@ -97,10 +107,29 @@
 
   function load() {
     try {
-      const raw = db.getItem(KEY);
-      if (!raw) return freshState();
+      let raw = db.getItem(KEY);
+      if (!raw) {
+        const old = db.getItem(OLD_KEY);
+        db.removeItem(OLD_KEY);
+        const fresh = freshState();
+        if (old) {
+          fresh.notice = "The lesson path changed, so this handset started over. Old chapter progress was cleared.";
+          try {
+            const parsedOld = JSON.parse(old);
+            if (parsedOld && parsedOld.settings) {
+              fresh.settings.fast = !!parsedOld.settings.fast;
+              fresh.settings.sound = !!parsedOld.settings.sound;
+            }
+          } catch (err) { /* old save was not usable */ }
+        }
+        return fresh;
+      }
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.v !== 1 || !parsed.trust) return freshState();
+      if (!parsed || parsed.v !== 2 || !parsed.trust) {
+        db.removeItem(KEY);
+        db.removeItem(OLD_KEY);
+        return freshState();
+      }
       parsed.settings = parsed.settings || { fast: false, sound: false };
       if (typeof parsed.settings.sound !== "boolean") parsed.settings.sound = false;
       parsed.codex = parsed.codex || ["range", "cell"];
@@ -174,10 +203,13 @@
   }
 
   function scoreChapter(run) {
-    const hintCost = [0, 10, 30, 60][Math.min(3, run.hints | 0)];
+    const ch = currentChapter();
+    const freeHints = !!(ch && ch.tier <= 1);
+    const hintCost = freeHints ? 0 : [0, 10, 30, 60][Math.min(3, run.hints | 0)];
     const wrongCost = Math.min(45, (run.wrongs | 0) * 5);
     let s = 100 - hintCost - wrongCost;
-    if (run.ethics !== false && (run.wrongs | 0) === 0 && (run.hints | 0) === 0) s += 10;
+    const cleanHints = freeHints || (run.hints | 0) === 0;
+    if (run.ethics !== false && (run.wrongs | 0) === 0 && cleanHints) s += 10;
     if (run.goals && run.goals["reported-pii"]) s += 5;
     return Math.max(15, s);
   }
@@ -359,7 +391,10 @@
     init: function (opts) {
       clearTimer();
       forceInstant = !!(opts && opts.instant);
-      if (opts && opts.reset) db.removeItem(KEY);
+      if (opts && opts.reset) {
+        db.removeItem(KEY);
+        db.removeItem(OLD_KEY);
+      }
       state = load();
       state.settings.instant = forceInstant;
       Game.state = state;
@@ -370,6 +405,7 @@
       const clean = function (v, max) {
         return String(v || "").replace(/[<>]/g, "").trim().slice(0, max);
       };
+      state.notice = null;
       state.player = {
         name: clean(name, 24) || "Rowe",
         call: (clean(call, 12) || "LOW").toUpperCase()
@@ -390,6 +426,7 @@
     resetAll: function () {
       clearTimer();
       db.removeItem(KEY);
+      db.removeItem(OLD_KEY);
       state = freshState();
       state.settings.instant = forceInstant;
       Game.state = state;
@@ -675,7 +712,13 @@
         return;
       }
       run.hints += 1;
-      state.hintSheet = { text: ch.hints[run.hints - 1], n: run.hints, cost: [0, 10, 20, 30][run.hints] };
+      const freeHints = ch.tier <= 1;
+      state.hintSheet = {
+        text: ch.hints[run.hints - 1],
+        n: run.hints,
+        cost: freeHints ? 0 : [0, 10, 20, 30][run.hints],
+        free: freeHints
+      };
       save();
       emit();
     },
@@ -687,7 +730,7 @@
         Game.buyHint();
         return;
       }
-      state.hintSheet = { text: ch.hints[Math.min(ch.hints.length, run.hints) - 1], n: run.hints, cost: 0 };
+      state.hintSheet = { text: ch.hints[Math.min(ch.hints.length, run.hints) - 1], n: run.hints, cost: 0, free: ch.tier <= 1 };
       emit();
     },
     closeHint: function () {
@@ -716,19 +759,34 @@
       const step = currentStep();
       let text = ch.objective;
       let progress = "";
-      if (step && step.do === "await") {
+      if (run && run.ip && String(run.ip.scene || "").indexOf("quiz") === 0) {
+        text = "Answer the question at the bottom of the screen.";
+      } else if (step && step.do === "choice") {
+        text = "Answer the question at the bottom of the screen.";
+      } else if (step && step.do === "await") {
         const left = step.goals.filter(function (g) { return !run.goals[g]; });
         progress = (step.goals.length - left.length) + "/" + step.goals.length;
         const labels = left.map(function (g) { return (ch.goalText && ch.goalText[g]) || g; });
-        if (labels.length) text = labels.join(" ");
+        if (labels.length) text = labels[0];
       }
+      let command = "";
+      if (ch.tier <= 1 && run && ch.scaffold) {
+        ch.scaffold.forEach(function (item) {
+          if (!command && !run.goals[item.goal]) command = item.command;
+        });
+      }
+      const tierNames = ["Basics", "Beginner", "Intermediate", "Advanced"];
       return {
         n: ch.n,
         title: ch.title,
+        tier: ch.tier || 0,
+        tierName: tierNames[ch.tier || 0] || "Basics",
         text: text,
+        command: command,
         progress: progress,
         hints: run.hints,
         maxHints: (ch.hints || []).length,
+        freeHints: ch.tier <= 1,
         provisional: scoreChapter(run)
       };
     },
@@ -736,10 +794,11 @@
       return Object.keys(state.best).reduce(function (sum, id) { return sum + (state.best[id] || 0); }, 0);
     },
     rank: function () {
+      const rows = rankRows();
       const score = Game.totalScore();
-      let name = RANKS[0].name;
-      RANKS.forEach(function (r) { if (score >= r.min) name = r.name; });
-      return { name: name, score: score, next: RANKS.filter(function (r) { return r.min > score; })[0] || null };
+      let name = rows[0].name;
+      rows.forEach(function (r) { if (score >= r.min) name = r.name; });
+      return { name: name, score: score, next: rows.filter(function (r) { return r.min > score; })[0] || null };
     },
     standing: function () {
       const t = state.trust || {};
@@ -748,7 +807,7 @@
       return { score: score, word: word, trust: t };
     },
     scoreChapter: scoreChapter,
-    ranks: RANKS,
+    rankRows: rankRows,
     people: {
       quill: { name: "QUILL", role: "fixer" },
       rook: { name: "ROOK", role: "netrunner" },

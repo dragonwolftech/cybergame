@@ -14,6 +14,28 @@
   let histDraft = "";
   let bootPhase = 1;
   let bootTimer = 0;
+  let pendingCmd = "";
+
+  const GLOSS = [
+    ["IP address", "The number of one computer on a network. Example: 192.0.2.40. That range is for labs, not the real internet."],
+    ["domain name", "A word name that points at a computer, like helixdyne.example. People remember the name. The computer still uses the number."],
+    ["red team", "People hired to try to break a system and then write a report. Without the written hire, the same actions are an intrusion."],
+    ["rules of engagement", "The written permission for a test: what you may touch, which techniques are allowed, the hours, and when you stop."],
+    ["authorization", "Written permission. If it is not on the list, you do not have it."],
+    ["scope", "The list of systems you are allowed to test. Nearby does not count."],
+    ["password", "A secret you type to prove you are allowed in. Anyone who knows it can pretend to be that account."],
+    ["phishing", "A message that pretends to be someone you trust so you will click or type a secret."],
+    ["encoding", "A costume for text, like base64. Anyone can undo it. It is not a lock."],
+    ["encryption", "A lock. Without the key, the text stays unreadable."],
+    ["terminal", "A text window. You type a command and the computer prints an answer."],
+    ["command", "One instruction you type into the terminal, then Run."],
+    ["server", "A computer that waits for requests and sends answers."],
+    ["network", "Computers that can send messages to each other."],
+    ["request", "A message that asks for something. A browser request asks a server for a page."],
+    ["HTTP", "The ordinary language websites use. The browser asks. The server answers."],
+    ["hash", "A fingerprint of some text. You cannot turn the fingerprint back into the text."],
+    ["port", "A numbered door on one computer. Different programs listen on different doors."]
+  ];
 
   const CAST = {
     quill: { handle: "QUILL", tag: "fixer", glyph: "Q" },
@@ -178,6 +200,47 @@
     return String(text || "").split("{name}").join(player.name).split("{call}").join(player.call);
   }
 
+  function gloss(text) {
+    const source = fill(text);
+    const parts = [];
+    const used = {};
+    let cursor = 0;
+    const pattern = new RegExp("\\b(" + GLOSS.map(function (row) {
+      return row[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join("|") + ")\\b", "gi");
+    let match;
+    while ((match = pattern.exec(source))) {
+      const word = match[1];
+      const key = word.toLowerCase();
+      parts.push(document.createTextNode(source.slice(cursor, match.index)));
+      if (used[key]) parts.push(document.createTextNode(word));
+      else {
+        used[key] = true;
+        const def = (GLOSS.filter(function (row) { return row[0].toLowerCase() === key; })[0] || ["", ""])[1];
+        parts.push(h("button", {
+          class: "jargon",
+          type: "button",
+          onClick: function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const open = event.currentTarget.querySelector(".jargontip");
+            if (open) open.remove();
+            else event.currentTarget.append(h("span", { class: "jargontip" }, def));
+          }
+        }, word));
+      }
+      cursor = match.index + word.length;
+    }
+    parts.push(document.createTextNode(source.slice(cursor)));
+    return parts;
+  }
+
+  function insertCommand(cmd) {
+    pendingCmd = cmd;
+    if (view().name !== "terminal") go("terminal");
+    else refresh();
+  }
+
   function view() { return stack[stack.length - 1]; }
 
   function viewKey() {
@@ -281,6 +344,14 @@
       return;
     }
     restore(shot, jumped);
+    if (pendingCmd) {
+      const input = document.getElementById("term-in");
+      if (input) {
+        input.value = pendingCmd;
+        input.focus();
+      }
+      pendingCmd = "";
+    }
   }
 
   function onGame() {
@@ -483,13 +554,17 @@
     const run = Game.activeRun();
     return h("div", { class: "obj" },
       h("div", {},
-        h("strong", {}, "CH " + String(info.n).padStart(2, "0") + (info.progress ? "  " + info.progress : "")),
-        h("p", {}, info.text)
+        h("strong", {}, (info.tierName || "Basics") + " · " + String(info.n).padStart(2, "0") + (info.progress ? "  " + info.progress : "")),
+        h("p", {}, gloss(info.text)),
+        info.command ? h("button", {
+          class: "cmdchip",
+          onClick: function () { insertCommand(info.command); }
+        }, "Type: " + info.command) : null
       ),
       h("button", {
         class: "hintbtn",
         onClick: function () { if (run && run.hints) Game.showHint(); else Game.buyHint(); }
-      }, "Hint " + info.hints + "/" + info.maxHints)
+      }, "Hint" + (info.freeHints ? " · free" : "") + " " + info.hints + "/" + info.maxHints)
     );
   }
 
@@ -551,8 +626,9 @@
       h("h1", { class: "wordmark glitch" }, "Night Audit"),
       log,
       h("p", {}, "Handset 04 · the sprawl of Cinderwharf"),
-      h("p", { class: "lead" }, "Helix Dyne's staging range lives in this client. The city outside the glass does not. You were hired to break the copy and write down what you found.")
+      h("p", { class: "lead" }, "You start from zero. The first lessons are words and six commands. Nothing here touches a real network.")
     );
+    if (Game.state && Game.state.notice) scroll.append(h("p", { class: "warn" }, Game.state.notice));
     if (done) {
       scroll.append(h("button", { class: "btn primary", id: "jack-in", onClick: function () { go("ident"); } }, "Jack in"));
     }
@@ -744,11 +820,11 @@
         }, m.card.title, h("span", {}, m.card.sub || "Open"))
       );
     }
-    if (m.who === "system") return h("div", { class: "sysmsg" + beat }, "HANDSET // " + fill(m.text));
+    if (m.who === "system") return h("div", { class: "sysmsg" + beat }, gloss("HANDSET // " + (m.text || "")));
     const mine = m.who === "you";
     return h("div", { class: "msg" + (mine ? " mine" : "") + beat },
       h("div", { class: "who who-" + m.who }, person(m.who)),
-      h("div", { class: "bubble" }, fill(m.text)),
+      h("div", { class: "bubble" }, gloss(m.text)),
       h("div", { class: "when" }, fmtTime(m.time))
     );
   }
@@ -763,8 +839,14 @@
   function jobsView() {
     const wrap = h("div", { class: "view" });
     const sc = h("div", { class: "scroll" });
-    sc.append(h("p", { class: "sub" }, "Chapters unlock in order. Score banks when you file the debrief. Hints spend it early."));
+    sc.append(h("p", { class: "sub" }, "Start at Tier 0 if the words are new. One idea at a time. Hints are free in Tier 0 and Tier 1."));
+    let lastTier = -1;
+    const tierNames = ["Tier 0 · Basics", "Tier 1 · Beginner", "Tier 2 · Intermediate", "Tier 3 · Advanced"];
     NightAudit.chapters.forEach(function (ch) {
+      if ((ch.tier || 0) !== lastTier) {
+        lastTier = ch.tier || 0;
+        sc.append(h("h2", { class: "tierhead" }, tierNames[lastTier] || "Tier"));
+      }
       const open = Game.isOpen(ch);
       const run = Game.state.chapters[ch.id];
       const done = run && run.status === "done";
@@ -1288,6 +1370,8 @@
       h("p", { class: "kicker" }, "Debrief · " + String(ch.n).padStart(2, "0")),
       h("h2", {}, ch.title),
       h("p", { class: "fine" }, ch.concept + (score ? " · " + score + " banked · " + Game.rank().name : "")),
+      h("h3", {}, "What you just learned"),
+      h("p", { class: "learned" }, ch.learned || ch.concept),
       h("h3", {}, "What you did"),
       h("p", {}, d.what),
       h("h3", {}, "What a defender does"),
@@ -1318,8 +1402,8 @@
     const info = Game.objective();
     const run = Game.activeRun();
     return h("div", { class: "sheet" },
-      h("p", { class: "kicker" }, "Hint " + sheet.n + (sheet.cost ? " · −" + sheet.cost + " if you file now" : "")),
-      h("p", {}, sheet.text),
+      h("p", { class: "kicker" }, "Hint " + sheet.n + (sheet.free ? " · free" : (sheet.cost ? " · −" + sheet.cost + " if you file now" : ""))),
+      h("p", {}, gloss(sheet.text)),
       info ? h("p", { class: "fine" }, "Filing this chapter now would bank " + info.provisional + ".") : null,
       h("div", { class: "row" },
         run && run.hints < 3 ? h("button", { class: "btn", onClick: function () { Game.buyHint(); } }, "Deeper hint") : null,

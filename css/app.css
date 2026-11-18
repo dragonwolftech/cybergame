@@ -624,6 +624,65 @@ h1, h2, .wordmark, .greet, .brand h1, .job h3, .debrief h2 {
 .debrief a { color: var(--amber); }
 .debrief { max-width: 760px; }
 .debrief p { font-family: var(--sans); }
+.learned { font-size: 17px; }
+.tierhead {
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--magenta);
+  margin: 18px 0 8px;
+  text-shadow: var(--glow-m);
+}
+.cmdchip {
+  display: inline-block;
+  width: auto;
+  margin-top: 8px;
+  border: 1px solid var(--acid);
+  color: var(--acid);
+  background: rgba(198, 255, 61, 0.08);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  box-shadow: 0 0 10px rgba(198, 255, 61, 0.25);
+}
+.jargon {
+  display: inline;
+  position: relative;
+  width: auto;
+  margin: 0;
+  padding: 0 1px;
+  border: 0;
+  border-bottom: 1px dotted var(--cyan);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.jargontip {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 6;
+  width: min(260px, 70vw);
+  padding: 8px 10px;
+  border: 1px solid rgba(61, 255, 232, 0.55);
+  border-radius: 8px;
+  background: #070910;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
 
 @media (min-width: 900px) {
   .workspace { grid-template-columns: 280px minmax(0, 1fr); }

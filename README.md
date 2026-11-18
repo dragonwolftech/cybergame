@@ -19,7 +19,7 @@ Then open `http://127.0.0.1:8741`.
 3. **Beacon Cell** is the story. Reply when buttons appear. If PIX texts you, open that channel — the main one will wait.
 4. Cards in the chat open a lab tab: Terminal, Mail, Browser, or Files. The objective strip says what's left. **Hint** spends score: −10, then −20, then −30.
 5. Finish a chapter and read the debrief. It says what you did, what a defender would change, how it gets caught, and where to read further.
-6. Rank runs from Script Kiddie to Ghost. Score and the codex live in this browser (`localStorage`). Settings can wipe the client, speed the messages up, or turn on a local synth hum. Sound stays off until you ask.
+6. Rank runs from Script Kiddie to Ghost, and Ghost still means you finished the hard ending. Score and the codex live in this browser (`localStorage`). Settings can wipe the client, speed the messages up, or turn on a local synth hum. Sound stays off until you ask. Dotted words have a plain definition. Tap one.
 
 Add `?fast=1` to the URL if you want messages to arrive quickly.
 
@@ -42,18 +42,42 @@ Standing with the cell moves when you keep the scope, and when you don't. PIX is
 
 ## Chapters
 
-1. **After Hours** — rules of engagement and scope
-2. **Public Light** — OSINT and reconnaissance
-3. **Open Ports** — scanning and service banners
-4. **Factory Settings** — default credentials
-5. **The Polite Lie** — phishing and pretext
-6. **Three Kinds of Secret** — encoding, hashing, encryption
-7. **The Query Speaks** — SQL injection on a training login
-8. **Echo** — cross-site scripting, stopped at the parsed tag
-9. **The Back Stair** — directory traversal and misconfiguration
-10. **Borrowed Root** — sudo policy and SUID
-11. **The Other Door** — credential reuse and lateral movement
-12. **What We Leave Behind** — persistence, logs, and the findings report
+Tier 0 is for someone who has never used a terminal. Each early chapter is one idea. A button types the command. Hints are free until Tier 2. Old saves are cleared when the lesson list changes.
+
+### Tier 0 · Basics
+
+1. **Computers Talk** — what a network is
+2. **Numbers and Names** — IP addresses and domain names
+3. **Doors on a Server** — servers and ports
+4. **The Terminal** — type `help`
+5. **Who You Are** — `whoami`
+6. **What's in the Folder** — `ls`
+7. **Read a File** — `cat`
+8. **Change Folder** — `cd`
+9. **Asking for a Page** — what HTTP is
+10. **Secrets and Fingerprints** — passwords and hashes
+11. **Permission** — red teaming and authorization
+
+### Tier 1 · Beginner
+
+12. **After Hours** — rules of engagement and scope
+13. **Public Light** — OSINT and reconnaissance
+14. **Open Ports** — one scan, then read the banners
+15. **Factory Settings** — default credentials, copied from the manual
+
+### Tier 2 · Intermediate
+
+16. **The Polite Lie** — phishing and pretext
+17. **Three Kinds of Secret** — encoding, hashing, encryption
+18. **The Query Speaks** — SQL injection on a training login
+19. **Echo** — cross-site scripting, stopped at the parsed tag
+20. **The Back Stair** — directory traversal and misconfiguration
+
+### Tier 3 · Advanced
+
+21. **Borrowed Root** — sudo policy and SUID
+22. **The Other Door** — credential reuse and lateral movement
+23. **What We Leave Behind** — persistence, logs, and the findings report
 
 ## Deploy
 
